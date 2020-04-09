@@ -3,6 +3,7 @@ import torch
 import torchvision.models as models
 from torchvision.models.detection.image_list import ImageList
 
+
 class TwoHeaded(torch.nn.Module):
     """With two outputs"""
 
@@ -47,7 +48,7 @@ class Supervised(torch.nn.Module):
     def _get_heads(self, out_dim):
         """The RoI heads"""
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-        ## == BOX HEAD == ## 
+        ## == BOX HEAD == ##
         roi_align = model.roi_heads.box_roi_pool
         box_head = model.roi_heads.box_head
         box_pred = TwoHeaded(1024, out_dim)
@@ -65,12 +66,21 @@ class Supervised(torch.nn.Module):
         score_thresh = 0.05
         nms_thresh = 0.5
         detections_per_img = 100
-        roi_heads = model.detection.RoIHeads(roi_align, box_head, box_pred, fg_iou_thresh,
-                             bg_iou_thresh, batch_size_per_image,
-                             positive_fraction, box_reg_weights,
-                             score_thresh, nms_thresh, detections_per_img,
-                             mask_roi_pool=mask_roi_pool, mask_head=mask_head,
-                             mask_predictor=mask_predictor)
+        roi_heads = model.detection.RoIHeads(
+            roi_align,
+            box_head,
+            box_pred,
+            fg_iou_thresh,
+            bg_iou_thresh,
+            batch_size_per_image,
+            positive_fraction,
+            box_reg_weights,
+            score_thresh,
+            nms_thresh,
+            detections_per_img,
+            mask_roi_pool=mask_roi_pool,
+            mask_head=mask_head,
+            mask_predictor=mask_predictor)
         return roi_heads
 
     # TODO: A pre- and postprocessing
@@ -85,6 +95,7 @@ class Supervised(torch.nn.Module):
         img_shapes = [(img.shape[2], img.shape[3])]
         img_list = ImageList(img, img_shapes)
         rois, loss_dict = self._rpn(img_list, base_features, [target])
-        loss_dict_head = self._roi(base_features, rois, img_shapes, [target])[1]
+        loss_dict_head = self._roi(
+            base_features, rois, img_shapes, [target])[1]
         loss_dict.update(loss_dict_head)
         return loss_dict
