@@ -8,7 +8,6 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 import torch
-from transferlearning.visualization import plot_target
 
 
 class VaihingenDataBase:

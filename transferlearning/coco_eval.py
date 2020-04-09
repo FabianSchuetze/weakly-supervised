@@ -13,7 +13,8 @@ import pycocotools.mask as mask_util
 
 from collections import defaultdict
 
-import utils
+import transferlearning.coco_eval_utils as utils
+# import utils
 
 
 class CocoEvaluator(object):

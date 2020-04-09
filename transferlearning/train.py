@@ -28,7 +28,7 @@ def engine(data_loader, optimizer, model, device, epoch, print_freq):
         img = img.to(device)
         for key in target:
             target[key] = target[key].to(device)
-        loss_dict = model(img, [target])
+        loss_dict = model(img, target)
         losses = sum(loss for loss in loss_dict.values())
         if not math.isfinite(losses):
             sys.exit(1)
