@@ -11,7 +11,7 @@ import torch
 from transferlearning.visualization import plot_target
 
 
-class Crop:
+class VaihingenDataBase:
     """Gerneates the image database"""
 
     def __init__(self, path):
@@ -159,7 +159,5 @@ class Crop:
 
 
 if __name__ == "__main__":
-    CROP = Crop('data')
-    TARGET1 = CROP._generate_crop(10)[1]
-    IMG, TARGET = CROP[10]
-    FIGURE = plot_target(TARGET1, TARGET)
+    DB = VaihingenDataBase('data')
+    IMG, TARGET = DB[10]
