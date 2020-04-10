@@ -9,35 +9,7 @@ from transferlearning.train import engine
 from transferlearning.evaluate import evaluate
 from transferlearning.transforms import ToTensor, RandomHorizontalFlip,\
         Compose
-
-# @torch.no_grad()
-# def evaluate(base, proposal, model, data_loader, device):
-# cpu_device = torch.device("cpu")
-# model.eval()
-# base.eval()
-# proposal.eval()
-# base.to(device)
-# proposal.to(device)
-# model.to(device)
-# coco = get_coco_api_from_dataset(data_loader.dataset)
-# iou_types = ['bbox', 'segm']
-# coco_evaluator = CocoEvaluator(coco, iou_types)
-# dataset = iter(data_loader)
-# import pdb; pdb.set_trace()
-# for i in range(len(dataset)):
-# img, target, img_shapes = get_data(dataset, device)
-# targets = [target]
-# img_list = ImageList(img, img_shapes)
-# base_features = base(img)
-# boxes = proposal(img_list, base_features)[0]
-# outputs = model(base_features, boxes, img_shapes)[0]
-# outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
-# res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
-# coco_evaluator.update(res)
-
-# coco_evaluator.synchronize_between_processes()
-# coco_evaluator.accumulate()
-# coco_evaluator.summarize()
+from transferlearning.processing import Processing
 
 def train_test_set():
     """Returns the train and test set"""
@@ -47,9 +19,9 @@ def train_test_set():
     dataset = torch.utils.data.Subset(dataset, indices[:-50])
     dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=1, shuffle=True, num_workers=4)
+        dataset, batch_size=1, shuffle=True, num_workers=0)
     data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=4)
+        dataset_test, batch_size=1, shuffle=False, num_workers=0)
     return data_loader, data_loader_test
 
 def get_transform(train):
@@ -66,7 +38,9 @@ if __name__ == "__main__":
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
     # DEVICE = torch.device('cpu')
     DATA_LOADER, DATA_LOADER_TEST = train_test_set()
-    MODEL = Supervised(2)
+    PROCESSING = Processing(800, 1333, [0.485, 0.456, 0.406],
+                            [0.229, 0.224, 0.225])
+    MODEL = Supervised(2, PROCESSING)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPTIMIZER = torch.optim.SGD(PARAMS, lr=0.005, momentum=0.9,

@@ -1,7 +1,12 @@
 r"""Contains the supervised model"""
+from typing import List, Tuple, Dict
 import torch
 import torchvision.models as models
-from torchvision.models.detection.image_list import ImageList
+import torchvision
+# from torchvision.models.detection.roi_heads import paste_masks_in_image
+# from torchvision.models.detection.image_list import ImageList
+# from transferlearning.pre_post_processsing import  _resize_boxes
+
 
 
 class TwoHeaded(torch.nn.Module):
@@ -27,13 +32,14 @@ class TwoHeaded(torch.nn.Module):
 class Supervised(torch.nn.Module):
     """Teh supervised training"""
 
-    def __init__(self, n_dim):
+    def __init__(self, n_dim, processing):
         """
         The fully supervised model
         """
         super(Supervised, self).__init__()
         self._backbone, self._rpn = self._get_backbone()
         self._heads = self._get_heads(n_dim)
+        self._processing = processing
 
     def _get_backbone(self):
         """the backbone of the model
@@ -77,13 +83,17 @@ class Supervised(torch.nn.Module):
             self._backbone.eval()
             self._rpn.eval()
             self._heads.eval()
-        target = [target] if target else None
-        base = self._backbone(img)
-        img_shapes = [(img.shape[2], img.shape[3])]
-        img_list = ImageList(img, img_shapes)
-        rois, loss_dict = self._rpn(img_list, base, target)
-        result, loss_dict_head = self._heads(base, rois, img_shapes, target)
+        # import pdb; pdb.set_trace()
+        orig_size = [(img.shape[2], img.shape[3])]
+        img, target = self._processing(img, [target])
+        target = target if target[0] else None
+        base = self._backbone(img.tensors)
+        # img_shapes = [(img.shape[2], img.shape[3])]
+        # img_list = ImageList(img, img_shapes)
+        rois, loss_dict = self._rpn(img, base, target)
+        result, loss_dict_head = self._heads(base, rois, img.image_sizes, target)
         if self.training:
             loss_dict.update(loss_dict_head)
             return loss_dict
+        result = self._processing.postprocess(result, img.image_sizes, orig_size)
         return result

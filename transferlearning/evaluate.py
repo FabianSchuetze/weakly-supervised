@@ -17,6 +17,9 @@ def get_data(input_iter, device):
 @torch.no_grad()
 def evaluate(model, data_loader, device) ->None:
     """Evaluates hte model"""
+    n_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+    # import pdb; pdb.set_trace()
     cpu_device = torch.device("cpu")
     model.eval()
     coco = get_coco_api_from_dataset(data_loader.dataset)
@@ -26,6 +29,7 @@ def evaluate(model, data_loader, device) ->None:
     for _ in range(len(dataset)):
         img, target, _ = get_data(dataset, device)
         targets = [target]
+        torch.cuda.synchronize()
         outputs = model(img)
         outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
@@ -34,3 +38,4 @@ def evaluate(model, data_loader, device) ->None:
     coco_evaluator.synchronize_between_processes()
     coco_evaluator.accumulate()
     coco_evaluator.summarize()
+    torch.set_num_threads(n_threads)

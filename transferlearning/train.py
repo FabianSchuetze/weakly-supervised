@@ -25,9 +25,11 @@ def engine(data_loader, optimizer, model, device, epoch, print_freq):
             data_loader, print_freq, header):
         target['boxes'] = target['boxes'].squeeze(0)
         target['labels'] = target['labels'].squeeze(0)
+        target['masks'] = target['masks'].squeeze(0)
         img = img.to(device)
         for key in target:
             target[key] = target[key].to(device)
+        # import pdb; pdb.set_trace()
         loss_dict = model(img, target)
         losses = sum(loss for loss in loss_dict.values())
         if not math.isfinite(losses):
