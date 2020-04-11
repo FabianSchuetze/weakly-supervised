@@ -139,7 +139,8 @@ class VaihingenDataBase:
         masks, labels = self._identify_targets(blob)
         return masks, labels
 
-    def _to_tensor_dict(self, masks, bboxes, labels, img_info, idx) -> Dict:
+    def _to_tensor_dict(self, masks, bboxes, labels, img_info, idx,
+                         area, iscrowd) -> Dict:
         """
         Converts the inputs to pytorch.tensor type and puts them into a dict
         """
@@ -154,6 +155,9 @@ class VaihingenDataBase:
         target['img_info'] = img_info
         target['labels'] = labels
         target['image_id'] = img_id
+        target['area'] = torch.as_tensor(area, dtype=torch.float32)
+        target['iscrowd'] = torch.as_tensor(iscrowd, dtype=torch.int64)
+        # import pdb; pdb.set_trace()
         return target
 
     def __getitem__(self, idx: int) ->Tuple:
@@ -178,8 +182,11 @@ class VaihingenDataBase:
         if not labels:
             return self.__getitem__(np.random.randint(0, len(self._index)))
         bboxes = self._extract_boxes(masks)
+        area = (bboxes[:, 3] - bboxes[:, 1]) * (bboxes[:, 2] - bboxes[:, 0])
+        iscrowd = torch.zeros((bboxes.shape[0],), dtype=torch.int64)
         img_info = np.array([img.height, img.width])
-        target = self._to_tensor_dict(masks, bboxes, labels, img_info, idx)
+        target = self._to_tensor_dict(masks, bboxes, labels, img_info, idx,
+                                      area, iscrowd)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target

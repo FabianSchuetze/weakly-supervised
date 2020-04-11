@@ -144,13 +144,20 @@ def _coco_remove_images_without_annotations(dataset, cat_list=None):
     return dataset
 
 
-def convert_to_coco_api(ds):
+def convert_to_coco_api(ds, indices=None):
+    # import pdb;  pdb.set_trace()
     coco_ds = COCO()
     # annotation IDs need to start at 1, not 0, see torchvision issue #1530
     ann_id = 1
     dataset = {'images': [], 'categories': [], 'annotations': []}
     categories = set()
-    for img_idx in range(len(ds)):
+    i = 0
+    if not indices:
+        indices = range(len(ds))
+    for img_idx in indices:
+        # print(i)
+        # i += 1
+    # for img_idx in range(len(ds)):
         # find better way to get target
         # targets = ds.get_annotations(img_idx)
         img, targets = ds[img_idx]
@@ -196,7 +203,8 @@ def convert_to_coco_api(ds):
     return coco_ds
 
 
-def get_coco_api_from_dataset(dataset):
+def get_coco_api_from_dataset(dataset, indices=None):
+    # import pdb;  pdb.set_trace()
     for _ in range(10):
         if isinstance(dataset, torchvision.datasets.CocoDetection):
             break
@@ -204,7 +212,7 @@ def get_coco_api_from_dataset(dataset):
             dataset = dataset.dataset
     if isinstance(dataset, torchvision.datasets.CocoDetection):
         return dataset.coco
-    return convert_to_coco_api(dataset)
+    return convert_to_coco_api(dataset, indices)
 
 
 class CocoDetection(torchvision.datasets.CocoDetection):

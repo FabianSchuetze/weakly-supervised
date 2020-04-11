@@ -73,7 +73,8 @@ class Supervised(torch.nn.Module):
             mask_predictor=mask_predictor)
         return roi_heads
 
-    def forward(self, img: torch.Tensor, target: Optional[Dict] = None):
+    def forward(self, images: List[torch.Tensor],
+                targets: Optional[List[Dict]] = [None]):
         """The forward propagation"""
         if self.training:
             self._backbone.train()
@@ -83,14 +84,14 @@ class Supervised(torch.nn.Module):
             self._backbone.eval()
             self._rpn.eval()
             self._heads.eval()
-        orig_size = [(img.shape[2], img.shape[3])]
-        img, target = self._processing(img, [target])
-        target = target if target[0] else None
-        base = self._backbone(img.tensors)
-        rois, loss_dict = self._rpn(img, base, target)
-        result, loss_dict_head = self._heads(base, rois, img.image_sizes, target)
+        orig_sizes = [(i.shape[1], i.shape[2]) for i in images]
+        images, targets = self._processing(images, targets)
+        targets = targets if targets[0] else None
+        base = self._backbone(images.tensors)
+        rois, loss_dict = self._rpn(images, base, targets)
+        res, loss_head = self._heads(base, rois, images.image_sizes, targets)
+        loss_dict.update(loss_head)
         if self.training:
-            loss_dict.update(loss_dict_head)
             return loss_dict
-        result = self._processing.postprocess(result, img.image_sizes, orig_size)
-        return result
+        res = self._processing.postprocess(res, images.image_sizes, orig_sizes)
+        return res
