@@ -2,7 +2,7 @@ r"""
 Showing some of the functionality of the coco dataset
 """
 import torch
-# from transferlearning.data.generate_data import VaihingenDataBase
+from transferlearning.data.vaihingen import VaihingenDataBase
 from transferlearning.data.penndata import PennFudanDataset
 from transferlearning.supervised import Supervised
 from transferlearning.train import engine
@@ -11,13 +11,13 @@ from transferlearning.transforms import ToTensor, RandomHorizontalFlip,\
         Compose
 from transferlearning.processing import Processing
 
-def train_test_set():
+def train_test(database, path):
     """Returns the train and test set"""
-    dataset = PennFudanDataset('data/PennFudanPed', get_transform(train=True))
-    dataset_test = PennFudanDataset('data/PennFudanPed', get_transform(train=False))
+    dataset = database(path, get_transform(train=True))
+    dataset_test = database(path, get_transform(train=False))
     indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    dataset = torch.utils.data.Subset(dataset, indices[:500])
+    dataset_test = torch.utils.data.Subset(dataset_test, indices[500:1000])
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=1, shuffle=True, num_workers=4)
     data_loader_test = torch.utils.data.DataLoader(
@@ -33,14 +33,15 @@ def get_transform(train):
     return Compose(transforms)
 
 if __name__ == "__main__":
-    N_GROUPS = 2
+    N_GROUPS = 5
     DEVICE = torch.device(
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
     # DEVICE = torch.device('cpu')
-    DATA_LOADER, DATA_LOADER_TEST = train_test_set()
-    PROCESSING = Processing(800, 1333, [0.485, 0.456, 0.406],
+    DATA, DATA_TEST = train_test(VaihingenDataBase, 'data')
+    # DATA, DATA_TEST = train_test(PennFudanDataset, 'data/PennFudanPed')
+    PROCESSING = Processing(200, 200, [0.485, 0.456, 0.406],
                             [0.229, 0.224, 0.225])
-    MODEL = Supervised(2, PROCESSING)
+    MODEL = Supervised(N_GROUPS, PROCESSING)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPTIMIZER = torch.optim.SGD(PARAMS, lr=0.005, momentum=0.9,
@@ -49,6 +50,6 @@ if __name__ == "__main__":
                                                    step_size=3,
                                                    gamma=0.1)
     for epoch in range(2):
-        engine(DATA_LOADER, OPTIMIZER, MODEL, DEVICE, epoch, 10)
+        engine(DATA, OPTIMIZER, MODEL, DEVICE, epoch, 10)
         LR_SCHEDULER.step()
-        evaluate(MODEL, DATA_LOADER_TEST, DEVICE)
+        evaluate(MODEL, DATA_TEST, DEVICE)

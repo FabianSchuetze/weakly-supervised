@@ -1,5 +1,5 @@
 r"""Contains the supervised model"""
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 import torch
 import torchvision.models as models
 import torchvision
@@ -47,8 +47,8 @@ class Supervised(torch.nn.Module):
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
         return model.backbone, model.rpn
 
-    def _get_heads(self, out_dim):
-        """The RoI heads"""
+    def _get_heads(self, out_dim: int):
+        """Defines the box, classificaiton and mask heads of the network"""
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
         # == custom == #
         box_pred = TwoHeaded(1024, out_dim)
@@ -73,8 +73,8 @@ class Supervised(torch.nn.Module):
             mask_predictor=mask_predictor)
         return roi_heads
 
-    # TODO: A pre- and postprocessing
-    def forward(self, img, target=None):
+    def forward(self, img: torch.Tensor, target: Optional[Dict] = None):
+        """The forward propagation"""
         if self.training:
             self._backbone.train()
             self._rpn.train()
@@ -83,13 +83,10 @@ class Supervised(torch.nn.Module):
             self._backbone.eval()
             self._rpn.eval()
             self._heads.eval()
-        # import pdb; pdb.set_trace()
         orig_size = [(img.shape[2], img.shape[3])]
         img, target = self._processing(img, [target])
         target = target if target[0] else None
         base = self._backbone(img.tensors)
-        # img_shapes = [(img.shape[2], img.shape[3])]
-        # img_list = ImageList(img, img_shapes)
         rois, loss_dict = self._rpn(img, base, target)
         result, loss_dict_head = self._heads(base, rois, img.image_sizes, target)
         if self.training:

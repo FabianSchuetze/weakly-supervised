@@ -1,7 +1,6 @@
 r"""
 Uses the generate crops of size 200x200 and labels for the images
 """
-
 import os
 from typing import List, Dict, Tuple
 import numpy as np
@@ -13,12 +12,13 @@ import torch
 class VaihingenDataBase:
     """Gerneates the image database"""
 
-    def __init__(self, path):
+    def __init__(self, path, transforms=None):
         """
         XXX
         """
         self._path = path
         self._index = self._generate_indices()
+        self._transforms = transforms
 
 
     def _generate_indices(self):
@@ -61,14 +61,25 @@ class VaihingenDataBase:
                 min_y = tmp_min_y
         return next_key
 
+    def _check_area(self, img: np.array) ->bool:
+        """Checks is the x and y are different"""
+        pos = np.where(img)
+        xmin = pos[1].min()
+        ymin = pos[0].min()
+        xmax = pos[1].max()
+        ymax = pos[0].max()
+        return xmin != xmax and ymin != ymax
+
     def _identify_targets(self, blob: Dict[int, Tuple]):
         masks, labels = [], []
         while blob.keys():
             next_object = self._find_next_object(blob)
             regions = blob[next_object][0]
             mask = (regions == 1).astype(np.uint8)
-            masks.append(mask)
-            labels.append(next_object)
+            large_enough = self._check_area(mask)
+            if large_enough:
+                masks.append(mask)
+                labels.append(next_object)
             regions -= 1
             new_regions, n_regions = ndimage.label(regions > 0)
             if n_regions:
@@ -87,6 +98,7 @@ class VaihingenDataBase:
             a numpy array with (xmin, ymin, width, height)i
         """
         bboxes = np.zeros((len(masks), 4))
+        # import pdb; pdb.set_trace()
         for idx, img in enumerate(masks):
             pos = np.where(img)
             xmin = pos[1].min()
@@ -96,12 +108,29 @@ class VaihingenDataBase:
             bboxes[idx, :] = [xmin, ymin, xmax, ymax]
         return bboxes
 
+    def _convert_to_label(self, color):
+        """Converts the input to a label"""
+        label = 0
+        if color[0] == 255 and color[1] == 255 and color[2] == 255:
+            label = 0
+        elif color[0] == 0 and color[1] == 0 and color[2] == 255:
+            label = 1
+        elif color[0] == 0 and color[1] == 255 and color[2] == 255:
+            label = 2
+        elif color[0] == 0 and color[1] == 255 and color[2] == 0: # tree
+            label = 3
+        elif color[0] == 255 and color[1] == 255 and color[2] == 0:
+            label = 4
+        elif color[0] == 255 and color[1] == 0 and color[2] == 0:
+            label = 0
+        return label
+
     def _generate_targets(self, pixel_annotations: Image):
         """
         Generates the taret
         """
-        fun = lambda x: x[0] + 2*x[1] + 3*x[2]
-        summaries = np.apply_along_axis(fun, 2, np.array(pixel_annotations))
+        summaries = np.apply_along_axis(self._convert_to_label, 2,
+                                        np.array(pixel_annotations))
         blob = {}
         for obj in np.unique(summaries):
             regions = ndimage.label(summaries == obj)[0]
@@ -151,12 +180,9 @@ class VaihingenDataBase:
         bboxes = self._extract_boxes(masks)
         img_info = np.array([img.height, img.width])
         target = self._to_tensor_dict(masks, bboxes, labels, img_info, idx)
+        if self._transforms is not None:
+            img, target = self._transforms(img, target)
         return img, target
 
     def __len__(self):
         return len(self._index)
-
-
-if __name__ == "__main__":
-    DB = VaihingenDataBase('data')
-    IMG, TARGET = DB[10]
