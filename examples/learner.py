@@ -1,51 +1,53 @@
+#!/usr/bin/python
 r"""
 Showing some of the functionality of the coco dataset
 """
 import torch
-from transferlearning.data.vaihingen import VaihingenDataBase
-from transferlearning.data.penndata import PennFudanDataset
-from transferlearning.supervised import Supervised
-from transferlearning.engine import train, evaluate
-from transferlearning.transforms import ToTensor, RandomHorizontalFlip,\
-        Compose
-from transferlearning.processing import Processing
+from transferlearning.data import VaihingenDataBase
+from transferlearning.data import PennFudanDataset
+from transferlearning import Supervised, Processing
+import transferlearning
+# from transferlearning.engine import train, evaluate
+# from transferlearning.transforms import ToTensor, RandomHorizontalFlip,\
+        # Compose
+# from transferlearning.processing import Processing
 
 def collate_fn(batch):
     return tuple(zip(*batch))
 
 def train_test(database, path):
     """Returns the train and test set"""
-    dataset = database(path, get_transform(train=True))
-    dataset_test = database(path, get_transform(train=False))
+    dataset = database(path, get_transform(training=True))
+    dataset_test = database(path, get_transform(training=False))
     indices = torch.randperm(len(dataset)).tolist()
-    # dataset = torch.utils.data.Subset(dataset, indices[:500])
-    # dataset_test = torch.utils.data.Subset(dataset_test, indices[500:550])
-    dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    dataset = torch.utils.data.Subset(dataset, indices[:500])
+    dataset_test = torch.utils.data.Subset(dataset_test, indices[500:550])
+    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
+    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=1, shuffle=True, num_workers=4,
         collate_fn=collate_fn)
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1, shuffle=False, num_workers=4,
         collate_fn=collate_fn)
-    return data_loader, data_loader_test, indices[-50:]
+    return data_loader, data_loader_test, indices[500:550]
 
-def get_transform(train):
+def get_transform(training):
     """The transform pipeline"""
     transforms = []
-    transforms.append(ToTensor()) # convert PIL image to tensor
-    if train:
-        transforms.append(RandomHorizontalFlip(0.5))
-    return Compose(transforms)
+    transforms.append(transferlearning.ToTensor()) # convert PIL image to tensor
+    if training:
+        transforms.append(transferlearning.RandomHorizontalFlip(0.5))
+    return transferlearning.Compose(transforms)
 
 if __name__ == "__main__":
     N_GROUPS = 5
     DEVICE = torch.device(
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
     # DEVICE = torch.device('cpu')
-    # DATA, DATA_TEST, indices = train_test(VaihingenDataBase, 'data')
-    DATA, DATA_TEST, indices = train_test(PennFudanDataset, 'data/PennFudanPed')
-    PROCESSING = Processing(800, 1333, [0.485, 0.456, 0.406],
+    DATA, DATA_TEST, indices = train_test(VaihingenDataBase, 'data')
+    # DATA, DATA_TEST, indices = train_test(PennFudanDataset, 'data/PennFudanPed')
+    PROCESSING = Processing(200, 200, [0.485, 0.456, 0.406],
                             [0.229, 0.224, 0.225])
     MODEL = Supervised(N_GROUPS, PROCESSING)
     MODEL.to(DEVICE)
@@ -54,6 +56,6 @@ if __name__ == "__main__":
     LR_SCHEDULER = torch.optim.lr_scheduler.StepLR(OPT, step_size=3, gamma=0.1)
     # import pdb; pdb.set_trace()
     for epoch in range(5):
-        train(DATA, OPT, MODEL, DEVICE, epoch, 10)
+        transferlearning.train(DATA, OPT, MODEL, DEVICE, epoch, 10)
         LR_SCHEDULER.step()
-        evaluate(MODEL, DATA_TEST, DEVICE, indices)
+        transferlearning.evaluate(MODEL, DATA_TEST, DEVICE, indices)
