@@ -1,12 +1,9 @@
 r"""Contains the supervised model"""
-from typing import List, Tuple, Dict, Optional
+from typing import List, Dict, Optional
 import torch
 import torchvision.models as models
-import torchvision
-# from torchvision.models.detection.roi_heads import paste_masks_in_image
-# from torchvision.models.detection.image_list import ImageList
-# from transferlearning.pre_post_processsing import  _resize_boxes
-
+from .masking import SupervisedMask, TransferFunction, WeaklySupervised
+from .my_roi_heads import RoIHeads
 
 
 class TwoHeaded(torch.nn.Module):
@@ -49,16 +46,20 @@ class Supervised(torch.nn.Module):
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
         return model.backbone, model.rpn
 
+    # TODO: Make the bbox head class agnostic
     def _get_heads(self, out_dim: int):
         """Defines the box, classificaiton and mask heads of the network"""
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
         # == custom == #
         box_pred = TwoHeaded(1024, out_dim)
-        mask_predictor = models.detection.mask_rcnn.MaskRCNNPredictor(
-            model.roi_heads.mask_predictor.conv5_mask.in_channels, 256,
-            out_dim)
+        in_channels = model.roi_heads.mask_predictor.conv5_mask.in_channels
+        mask_predictor = SupervisedMask(in_channels, 256, out_dim)
 
-        roi_heads = models.detection.roi_heads.RoIHeads(
+        import pdb; pdb.set_trace()
+        transfer = TransferFunction(1024 * 4, 256, out_dim)
+        weakly_supervised = WeaklySupervised(in_channels, 256, out_dim)
+
+        roi_heads = RoIHeads(
             box_roi_pool=model.roi_heads.box_roi_pool,
             box_head=model.roi_heads.box_head,
             box_predictor=box_pred,
@@ -72,7 +73,9 @@ class Supervised(torch.nn.Module):
             detections_per_img=100,
             mask_roi_pool=model.roi_heads.mask_roi_pool,
             mask_head=model.roi_heads.mask_head,
-            mask_predictor=mask_predictor)
+            mask_predictor=mask_predictor,
+            transfer=transfer,
+            weakly_supervised=weakly_supervised)
         return roi_heads
 
     def forward(self, images: List[torch.Tensor],

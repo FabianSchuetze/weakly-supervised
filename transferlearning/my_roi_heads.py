@@ -531,6 +531,9 @@ class RoIHeads(torch.nn.Module):
                  keypoint_roi_pool=None,
                  keypoint_head=None,
                  keypoint_predictor=None,
+                 # Transfer
+                 transfer=None,
+                 weakly_supervised=None
                  ):
         super(RoIHeads, self).__init__()
 
@@ -564,6 +567,9 @@ class RoIHeads(torch.nn.Module):
         self.keypoint_roi_pool = keypoint_roi_pool
         self.keypoint_head = keypoint_head
         self.keypoint_predictor = keypoint_predictor
+
+        self.transfer = transfer
+        self.weakly_supervised = weakly_supervised
 
     def has_mask(self):
         if self.mask_roi_pool is None:
@@ -799,13 +805,15 @@ class RoIHeads(torch.nn.Module):
                 pos_matched_idxs = None
 
             if self.mask_roi_pool is not None:
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 mask_features = self.mask_roi_pool(features, mask_proposals, image_shapes)
                 mask_features = self.mask_head(mask_features)
-                # predicted_weights = self.predict_weights()
-                # The head is more complicated than box_head, FCN.
-                mask_logits = self.mask_predictor(mask_features)
-                # need to learn by transfer the function inside mask_predictor
+                if self.transfer:
+                    weights = self.transfer(
+                        self.box_predictor.state_dict()['_bbox_pred.weight'])
+                    mask_logits = self.weakly_supervised(mask_features, weights)
+                else:
+                    mask_logits = self.mask_predictor(mask_features)
             else:
                 mask_logits = torch.tensor(0)
                 raise Exception("Expected mask_roi_pool to be not None")

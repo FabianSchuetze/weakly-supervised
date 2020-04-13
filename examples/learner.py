@@ -20,10 +20,10 @@ def train_test(database, path):
     dataset = database(path, get_transform(training=True))
     dataset_test = database(path, get_transform(training=False))
     indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:500])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[500:550])
-    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    # dataset = torch.utils.data.Subset(dataset, indices[:500])
+    # dataset_test = torch.utils.data.Subset(dataset_test, indices[500:550])
+    dataset = torch.utils.data.Subset(dataset, indices[:-50])
+    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=1, shuffle=True, num_workers=4,
         collate_fn=collate_fn)
@@ -41,12 +41,12 @@ def get_transform(training):
     return transferlearning.Compose(transforms)
 
 if __name__ == "__main__":
-    N_GROUPS = 5
+    N_GROUPS = 2
     DEVICE = torch.device(
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
     # DEVICE = torch.device('cpu')
-    DATA, DATA_TEST, indices = train_test(VaihingenDataBase, 'data')
-    # DATA, DATA_TEST, indices = train_test(PennFudanDataset, 'data/PennFudanPed')
+    # DATA, DATA_TEST, indices = train_test(VaihingenDataBase, 'data')
+    DATA, DATA_TEST, indices = train_test(PennFudanDataset, 'data/PennFudanPed')
     PROCESSING = Processing(200, 200, [0.485, 0.456, 0.406],
                             [0.229, 0.224, 0.225])
     MODEL = Supervised(N_GROUPS, PROCESSING)
