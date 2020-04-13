@@ -55,7 +55,7 @@ class Supervised(torch.nn.Module):
         in_channels = model.roi_heads.mask_predictor.conv5_mask.in_channels
         mask_predictor = SupervisedMask(in_channels, 256, out_dim)
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         transfer = TransferFunction(1024 * 4, 256, out_dim)
         weakly_supervised = WeaklySupervised(in_channels, 256, out_dim)
 
@@ -73,9 +73,9 @@ class Supervised(torch.nn.Module):
             detections_per_img=100,
             mask_roi_pool=model.roi_heads.mask_roi_pool,
             mask_head=model.roi_heads.mask_head,
-            mask_predictor=mask_predictor,
-            transfer=transfer,
-            weakly_supervised=weakly_supervised)
+            mask_predictor=mask_predictor)
+            # transfer=transfer,
+            # weakly_supervised=weakly_supervised)
         return roi_heads
 
     def forward(self, images: List[torch.Tensor],

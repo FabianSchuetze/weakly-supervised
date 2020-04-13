@@ -7,8 +7,8 @@ from typing import Dict
 import numpy as np
 import torch
 import transferlearning.coco_eval_utils as coco_eval_utils
-from transferlearning.coco_eval import CocoEvaluator
-from transferlearning.coco_utils import get_coco_api_from_dataset
+# from transferlearning.coco_eval import CocoEvaluator
+# from transferlearning.coco_utils import get_coco_api_from_dataset
 
 
 @torch.no_grad()
@@ -16,22 +16,30 @@ def evaluate(model, data_loader, device, indices) ->None:
     """Evaluates hte model"""
     cpu_device = torch.device("cpu")
     model.eval()
-    coco = get_coco_api_from_dataset(data_loader.dataset, indices)
-    iou_types = ['bbox', 'segm']
-    coco_evaluator = CocoEvaluator(coco, iou_types)
+    # coco = get_coco_api_from_dataset(data_loader.dataset, indices)
+    # iou_types = ['bbox', 'segm']
+    # coco_evaluator = CocoEvaluator(coco, iou_types)
     dataset = iter(data_loader)
+    all_targets = []
+    all_preds = []
+    all_images = []
+    # import pdb; pdb.set_trace()
     for _ in range(len(dataset)):
         images, targets = next(dataset)
+        all_images.append(images[0])
+        all_targets.append(targets[0])
         images = list(i.to(device) for i in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         # torch.cuda.synchronize()
         outputs = model(images)
         outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
-        res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
-        coco_evaluator.update(res)
-    coco_evaluator.synchronize_between_processes()
-    coco_evaluator.accumulate()
-    coco_evaluator.summarize()
+        all_preds.append(outputs[0])
+    return all_preds, all_targets, all_images
+        # res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
+        # # coco_evaluator.update(res)
+    # # coco_evaluator.synchronize_between_processes()
+    # # coco_evaluator.accumulate()
+    # # coco_evaluator.summarize()
 
 
 def check_losses(losses: float, loss_dict: Dict, target):
@@ -77,13 +85,13 @@ def train(data: torch.utils.data.dataloader.DataLoader,
     header = 'Epoch: [{}]'.format(epoch)
     lr_scheduler = learning_rate_scheduler(optimizer, epoch, data)
     for images, targets in logger.log_every(data, print_freq, header):
+        optimizer.zero_grad()
         images = list(i.to(device) for i in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         # import pdb; pdb.set_trace()
         loss_dict = model(images, targets)
         losses = sum(loss for loss in loss_dict.values())
         check_losses(losses, loss_dict, targets)
-        optimizer.zero_grad()
         losses.backward()
         optimizer.step()
         if lr_scheduler is not None:

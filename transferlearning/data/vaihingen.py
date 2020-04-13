@@ -9,6 +9,8 @@ from scipy import ndimage
 import torch
 
 
+# TODO: Bug, I once saw during testing  'Results do not correspond to current coco set'
+# AssertionError: Results do not correspond to current coco set
 class VaihingenDataBase:
     """Gerneates the image database"""
 
@@ -156,9 +158,14 @@ class VaihingenDataBase:
         target['labels'] = labels
         target['image_id'] = img_id
         target['area'] = torch.as_tensor(area, dtype=torch.float32)
-        target['iscrowd'] = torch.as_tensor(iscrowd, dtype=torch.int64)
+        target['iscrowd'] = torch.as_tensor(iscrowd, dtype=torch.int32)
         # import pdb; pdb.set_trace()
         return target
+
+    def _inadmissible_example(self, masks, labels):
+        wrong_object = len(masks) == 1 and masks[0].sum() == 200 * 200
+        no_labels = not labels
+        return wrong_object or no_labels
 
     def __getitem__(self, idx: int) ->Tuple:
         """
@@ -177,9 +184,10 @@ class VaihingenDataBase:
         target: Dict[string, Torch]
             All required training targets
         """
+        # import pdb; pdb.set_trace()
         img, target = self._generate_crop(idx)
         masks, labels = self._generate_targets(target)
-        if not labels:
+        if self._inadmissible_example(masks, labels):
             return self.__getitem__(np.random.randint(0, len(self._index)))
         bboxes = self._extract_boxes(masks)
         area = (bboxes[:, 3] - bboxes[:, 1]) * (bboxes[:, 2] - bboxes[:, 0])

@@ -6,6 +6,7 @@ import torch
 from transferlearning.data import VaihingenDataBase
 from transferlearning.data import PennFudanDataset
 from transferlearning import Supervised, Processing
+from transferlearning import eval_detection
 import transferlearning
 # from transferlearning.engine import train, evaluate
 # from transferlearning.transforms import ToTensor, RandomHorizontalFlip,\
@@ -47,7 +48,7 @@ if __name__ == "__main__":
     # DEVICE = torch.device('cpu')
     # DATA, DATA_TEST, indices = train_test(VaihingenDataBase, 'data')
     DATA, DATA_TEST, indices = train_test(PennFudanDataset, 'data/PennFudanPed')
-    PROCESSING = Processing(200, 200, [0.485, 0.456, 0.406],
+    PROCESSING = Processing(800, 1333, [0.485, 0.456, 0.406],
                             [0.229, 0.224, 0.225])
     MODEL = Supervised(N_GROUPS, PROCESSING)
     MODEL.to(DEVICE)
@@ -55,7 +56,8 @@ if __name__ == "__main__":
     OPT = torch.optim.SGD(PARAMS, lr=0.005, momentum=0.9, weight_decay=0.0005)
     LR_SCHEDULER = torch.optim.lr_scheduler.StepLR(OPT, step_size=3, gamma=0.1)
     # import pdb; pdb.set_trace()
-    for epoch in range(5):
+    for epoch in range(1):
         transferlearning.train(DATA, OPT, MODEL, DEVICE, epoch, 10)
         LR_SCHEDULER.step()
-        transferlearning.evaluate(MODEL, DATA_TEST, DEVICE, indices)
+    pred, gt, imgs = transferlearning.evaluate(MODEL, DATA_TEST, DEVICE, indices)
+    res = eval_detection(pred, gt)
