@@ -52,10 +52,10 @@ def train_test(database: transferlearning.data, path: str)\
     dataset = torch.utils.data.Subset(dataset, indices[:-50])
     dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=1, shuffle=True, num_workers=4,
+        dataset, batch_size=1, shuffle=True, num_workers=0,
         collate_fn=collate_fn)
     data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=4,
+        dataset_test, batch_size=1, shuffle=False, num_workers=0,
         collate_fn=collate_fn)
     return data_loader, data_loader_test
 
@@ -64,12 +64,12 @@ if __name__ == "__main__":
     DEVICE = torch.device('cpu')
     if torch.cuda.is_available():
         DEVICE = torch.device('cuda')
-    # DATA, DATA_TEST = train_test(VaihingenDataBase, 'data')
+    # DATA, DATA_TEST = train_test(VaihingenDataBase, 'data/vaihingen')
     DATA, DATA_TEST = train_test(PennFudanDataset, 'data/PennFudanPed')
     N_GROUPS = 2
     MEAN_DATA = [0.485, 0.456, 0.406]
     STDV_DATA = [0.229, 0.224, 0.225]
-    PROCESSING = Processing(800, 1333, MEAN_DATA, STDV_DATA)
+    PROCESSING = Processing(200, 200, MEAN_DATA, STDV_DATA)
     MODEL = Supervised(N_GROUPS, PROCESSING)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
@@ -81,5 +81,4 @@ if __name__ == "__main__":
         LR_SCHEDULER.step()
         pred, gt, imgs = transferlearning.evaluate(MODEL, DATA_TEST, DEVICE)
         res = eval_metrics(pred, gt, ['box', 'segm'])
-        print("The chainer metrics are")
         print_evaluation(res)

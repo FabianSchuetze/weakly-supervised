@@ -1,4 +1,6 @@
-r"""Contains the supervised model"""
+r"""
+Contains the Neural Network model
+"""
 from typing import List, Dict, Optional
 import torch
 import torchvision.models as models
@@ -31,21 +33,32 @@ class Supervised(torch.nn.Module):
 
     def __init__(self, n_dim: int, processing, weakly_supervised: bool = False):
         """
-        The fully supervised model
+        Instance Segmenation based on mask r-cnn
+
+        Parameters
+        ----------
+        n_dim: int
+            The number of classes to label
+
+        processing:
+            A class used for pre- and postprocessing.
+
+        weakly_supervised: bool
+            Indicates whether to use weakly supervised training
         """
         super(Supervised, self).__init__()
+        self._weakly_supervised = weakly_supervised
         self._backbone, self._rpn = self._get_backbone()
         self._heads = self._get_heads(n_dim)
-        # self._model = torch.nn.Sequential(backbone, rpn, head)
         self._processing = processing
 
     def _get_backbone(self):
-        """the backbone of the model
-        """
+        """the backbone of the model, used to downsample the input images to a
+        features representation"""
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
         return model.backbone, model.rpn
 
-    # TODO: Make the bbox head class agnostic
+    # TODO: Make the bbox head class agnostic, -> benchmark
     def _get_heads(self, out_dim: int):
         """Defines the box, classificaiton and mask heads of the network"""
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
@@ -55,8 +68,9 @@ class Supervised(torch.nn.Module):
         mask_predictor = SupervisedMask(in_channels, 256, out_dim)
 
         # import pdb; pdb.set_trace()
-        transfer = TransferFunction(1024 * 4, 256, out_dim)
-        weakly_supervised = WeaklySupervised(in_channels, 256, out_dim)
+        if self._weakly_supervised:
+            transfer = TransferFunction(1024 * 4, 256, out_dim)
+            weakly_supervised = WeaklySupervised(in_channels, 256, out_dim)
 
         roi_heads = RoIHeads(
             box_roi_pool=model.roi_heads.box_roi_pool,

@@ -15,17 +15,8 @@ def _convert_box(pred_box: torch.Tensor):
 
 def _convert_mask(mask: torch.Tensor, threshold=0.5):
     """Converts mask to a form that can be used by cocoeval"""
-    import pdb; pdb.set_trace()
     mask = np.array(mask.squeeze(1)) if mask.dim() == 4 else np.array(mask)
-    mask = mask > threshold
-
-    # if mask.dim() == 4:
-        # mask = np.array(mask.squeeze(1))
-    # elif mask.dim() == 3:
-        # mask = np.array(mask, dtype=bool)
-    # else:
-        # raise Exception("expect dimension of 3 or 4")
-    return mask
+    return mask > threshold
 
 def eval_boxes(predictions: List[Dict], gts: List[Dict]) -> Dict:
     """Returns the coco evaluation metric for box detection.
@@ -47,7 +38,6 @@ def eval_boxes(predictions: List[Dict], gts: List[Dict]) -> Dict:
     eval: Dict:
         The results according to the coco metric
     """
-    # import pdb; pdb.set_trace()
     pred_boxes, pred_labels, pred_scores = [], [], []
     gt_boxes, gt_labels, gt_areas = [], [], []
     for prediction, gt in zip(predictions, gts):
@@ -100,7 +90,26 @@ def eval_masks(predictions: List[Dict], gts: List[Dict]) -> Dict:
 def eval_metrics(predictions: List[Dict], gts: List[Dict], metrics: List[str])\
         -> Dict:
     """
-    Returns the metrics
+    Returns the metrics specifies in metrics. The metrics can be 'semg' for
+    instance segmentation and 'box' for bounding box evaluation
+
+    Parameters
+    ----------
+    predictions: List[Dict]
+        The predictions. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    gts: List[Dict]
+        The gts. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    Returns
+    -------
+    eval: Dict:
+        The results according to the coco metric
+
     """
     # import pdb; pdb.set_trace()
     results = {}
@@ -118,5 +127,7 @@ def print_evaluation(metrics) -> None:
     Prints the evaluation received from above
     """
     for key in metrics:
+        print("The metrics for %s are:" %(key))
         out = metrics[key]['coco_eval'].__str__()
         print(out)
+    print("")

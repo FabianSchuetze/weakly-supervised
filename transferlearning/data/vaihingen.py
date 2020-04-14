@@ -2,33 +2,44 @@ r"""
 Uses the generate crops of size 200x200 and labels for the images
 """
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 import torch
+from transferlearning.transforms import Compose
 
 
-# TODO: Bug, I once saw during testing  'Results do not correspond to current coco set'
-# AssertionError: Results do not correspond to current coco set
 class VaihingenDataBase:
-    """Gerneates the image database"""
+    """
+    Gerneates the image database for the Vaihingen dataset. The dataset
+    contains 33 high-resulution images. From this dataset, I crop images of
+    200x200 pixel sizes which constitute the samples of the training set.
+    In total that leads to about 120*33 samples
 
-    def __init__(self, path, transforms=None):
-        """
-        XXX
-        """
+    Parameters
+    ----------
+    path: str
+        The root to the datafolder. It is assumed that the images then reside
+        at path + '/images/' and the anntations at path + '/annotations'/
+
+    transforms: Optional[transferlearning.transforms.Compose]
+        Transformation operating on troch.tensors
+    """
+
+    def __init__(self, path: str, transforms: Optional[Compose] = None):
         self._path = path
         self._index = self._generate_indices()
         self._transforms = transforms
 
-
     def _generate_indices(self):
         """
-        Generates the list with the crops
+        Generates the list with the crops. Each image from the original file is
+        read and cut into pieces of 200x200 pixel size. The image named and the
+        croped location provide the indices for the samples.
         """
         index = []
-        img_path = self._path + '/images/original_images/'
+        img_path = self._path + '/images/'
         for file in os.listdir(img_path):
             img = Image.open(img_path + file)
             n_rows, n_cols = img.height // 200, img.width // 200
@@ -39,14 +50,27 @@ class VaihingenDataBase:
             index.extend(tmp_index)
         return index
 
+    def _generate_crop(self, idx: int) ->Tuple[Image.Image, Image.Image]:
+        """
+        Returns a image and a traget annoation from the index
 
-    def _generate_crop(self, idx):
+        Parameters
+        ----------
+        idx: int
+            The sample index
+
+        Returns
+        -------
+        new_img: PIL.Image.Image
+            The 200x200 rgb image from the files
+
+        new_target: PIL.Image.Image
+            The 200x200 ground-truth annotation
         """
-        Generates the crops for picture name
-        """
+        # import pdb; pdb.set_trace()
         info = self._index[idx]
         left, top = info[1]
-        img = Image.open(self._path + '/images/original_images/' + info[0])
+        img = Image.open(self._path + '/images/' + info[0])
         target = Image.open(self._path + '/annotations/' + info[0])
         region = (top, left, top+200, left+200)
         new_img = img.crop(region)
@@ -54,6 +78,10 @@ class VaihingenDataBase:
         return new_img, new_target
 
     def _find_next_object(self, blob):
+        """
+        Finds the object that is located to the most top-right among all
+        objects in blob
+        """
         min_x, min_y = np.inf, np.inf
         for key in blob:
             tmp_min_x, tmp_min_y = blob[key][1][0], blob[key][2][0]
@@ -64,7 +92,7 @@ class VaihingenDataBase:
         return next_key
 
     def _check_area(self, img: np.array) ->bool:
-        """Checks is the x and y are different"""
+        """Checks if img has a positive area"""
         pos = np.where(img)
         xmin = pos[1].min()
         ymin = pos[0].min()
@@ -73,6 +101,25 @@ class VaihingenDataBase:
         return xmin != xmax and ymin != ymax
 
     def _identify_targets(self, blob: Dict[int, Tuple]):
+        """
+        Generates the masks and labels encoded in `blob`. The masks and labels
+        are returns such that they are ordered from top-left to bottom-right.
+
+        Parameters
+        ----------
+        blob: Dict[int, Tuple[np.array, np.array, np.array]]
+            For each target label, the blob stores the mask areas and the
+            x,y locations for the masks.
+
+        Returns
+        -------
+        masks: List[np.array]
+            Indicates the region which is masked. Ordered from top right to
+            bottom left
+
+        labels: List[int]
+            The labels for each masked region. Same ordering as masks
+        """
         masks, labels = [], []
         while blob.keys():
             next_object = self._find_next_object(blob)
@@ -110,12 +157,13 @@ class VaihingenDataBase:
             bboxes[idx, :] = [xmin, ymin, xmax, ymax]
         return bboxes
 
-    def _convert_to_label(self, color):
-        """Converts the input to a label"""
-        label = 0
-        if color[0] == 255 and color[1] == 255 and color[2] == 255:
-            label = 0
-        elif color[0] == 0 and color[1] == 0 and color[2] == 255:
+    def _convert_to_label(self, color: np.array) -> int:
+        """
+        Converts the input image to a label. The annotations are encoded in
+        a color image. Each pixel is then convert into one int.
+        """
+        label = 0  # default label, background
+        if color[0] == 0 and color[1] == 0 and color[2] == 255:
             label = 1
         elif color[0] == 0 and color[1] == 255 and color[2] == 255:
             label = 2
@@ -123,16 +171,29 @@ class VaihingenDataBase:
             label = 3
         elif color[0] == 255 and color[1] == 255 and color[2] == 0:
             label = 4
-        elif color[0] == 255 and color[1] == 0 and color[2] == 0:
-            label = 0
         return label
 
-    def _generate_targets(self, pixel_annotations: Image):
+    def _generate_targets(self, annotations: Image.Image)\
+            -> Tuple[List[np.array], List[int]]:
         """
-        Generates the taret
+        Generates the masks and labels for each object class.
+
+        Parameters
+        ----------
+        annotations: Image.Image
+            The ground truth annotations
+
+        Returns
+        -------
+        masks: List[np.array]
+            Indicates the region which is masked. Ordered from top right to
+            bottom left
+
+        labels: List[int]
+            The labels for each masked region. Same ordering as masks
         """
         summaries = np.apply_along_axis(self._convert_to_label, 2,
-                                        np.array(pixel_annotations))
+                                        np.array(annotations))
         blob = {}
         for obj in np.unique(summaries):
             regions = ndimage.label(summaries == obj)[0]
@@ -141,28 +202,25 @@ class VaihingenDataBase:
         masks, labels = self._identify_targets(blob)
         return masks, labels
 
-    def _to_tensor_dict(self, masks, bboxes, labels, img_info, idx,
-                         area, iscrowd) -> Dict:
+    def _to_dict(self, masks, bboxes, labels, img_info, idx, area)\
+            -> Dict[str, torch.Tensor]:
         """
         Converts the inputs to pytorch.tensor type and puts them into a dict
         """
-        masks = torch.as_tensor(masks, dtype=torch.uint8)
-        bboxes = torch.as_tensor(bboxes, dtype=torch.float32)
-        labels = torch.as_tensor(labels, dtype=torch.int64)
-        img_info = torch.as_tensor(img_info, dtype=torch.float32)
-        img_id = torch.tensor([idx])
         target = {}
-        target['boxes'] = bboxes
-        target['masks'] = masks
-        target['img_info'] = img_info
-        target['labels'] = labels
-        target['image_id'] = img_id
+        target['boxes'] = torch.as_tensor(bboxes, dtype=torch.float32)
+        target['masks'] = torch.as_tensor(masks, dtype=torch.uint8)
+        target['img_info'] = torch.as_tensor(img_info, dtype=torch.float32)
+        target['labels'] = torch.as_tensor(labels, dtype=torch.int64)
+        target['image_id'] = torch.tensor([idx])
         target['area'] = torch.as_tensor(area, dtype=torch.float32)
-        target['iscrowd'] = torch.as_tensor(iscrowd, dtype=torch.int32)
-        # import pdb; pdb.set_trace()
+        # target['iscrowd'] = torch.as_tensor(iscrowd, dtype=torch.int32)
         return target
 
     def _inadmissible_example(self, masks, labels):
+        """If samples are occupied fully by one class the sample is deemed
+        inadmissible
+        """
         wrong_object = len(masks) == 1 and masks[0].sum() == 200 * 200
         no_labels = not labels
         return wrong_object or no_labels
@@ -184,17 +242,15 @@ class VaihingenDataBase:
         target: Dict[string, Torch]
             All required training targets
         """
-        # import pdb; pdb.set_trace()
         img, target = self._generate_crop(idx)
         masks, labels = self._generate_targets(target)
         if self._inadmissible_example(masks, labels):
             return self.__getitem__(np.random.randint(0, len(self._index)))
         bboxes = self._extract_boxes(masks)
         area = (bboxes[:, 3] - bboxes[:, 1]) * (bboxes[:, 2] - bboxes[:, 0])
-        iscrowd = torch.zeros((bboxes.shape[0],), dtype=torch.int64)
+        # iscrowd = torch.zeros((bboxes.shape[0],), dtype=torch.int64)
         img_info = np.array([img.height, img.width])
-        target = self._to_tensor_dict(masks, bboxes, labels, img_info, idx,
-                                      area, iscrowd)
+        target = self._to_dict(masks, bboxes, labels, img_info, idx, area)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target

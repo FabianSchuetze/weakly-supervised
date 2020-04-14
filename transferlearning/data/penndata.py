@@ -1,9 +1,12 @@
+r"""
+DataBased for the PennFudanDataset
+"""
 import os
 from PIL import Image
 import numpy as np
 import torch
 
-class PennFudanDataset(object):
+class PennFudanDataset:
     def __init__(self, root, transforms):
         self.root = root
         self.transforms = transforms
@@ -13,8 +16,6 @@ class PennFudanDataset(object):
         self.masks = list(sorted(os.listdir(os.path.join(root, "PedMasks"))))
 
     def __getitem__(self, idx):
-        # load images ad masks
-        # idx = 10
         img_path = os.path.join(self.root, "PNGImages", self.imgs[idx])
         mask_path = os.path.join(self.root, "PedMasks", self.masks[idx])
         img = Image.open(img_path).convert("RGB")
