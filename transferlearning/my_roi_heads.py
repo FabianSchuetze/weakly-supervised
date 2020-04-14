@@ -1,3 +1,8 @@
+r"""
+Contains the code for the bounding box, and instance segmentation. Originally 
+specified by torchvision. Modified to account to weakly-suervised transfer
+learning.
+"""
 from __future__ import division
 import torch
 import torchvision
