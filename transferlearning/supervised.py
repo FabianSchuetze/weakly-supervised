@@ -9,9 +9,21 @@ from .my_roi_heads import RoIHeads
 
 
 class TwoHeaded(torch.nn.Module):
-    """With two outputs"""
+    """
+    Simple neural networ which predicts the probability for each class label
+    and the bounding boxes. Used as one of the heads of the `supervised` class
+    below.
 
-    def __init__(self, input_dimension, out_dim):
+    Parameters
+    ----------
+    input_dimension: int
+        The number of the dimension of the input featur vector
+
+    out_dim: int
+        The number of classe to predict
+    """
+
+    def __init__(self, input_dimension: int, out_dim: int):
         super(TwoHeaded, self).__init__()
         self._in_dim = input_dimension
         self._out_dim = out_dim
@@ -29,22 +41,24 @@ class TwoHeaded(torch.nn.Module):
 
 
 class Supervised(torch.nn.Module):
-    """Teh supervised training"""
+    """
+    The module used to predict labels, bounding boxes and instance based on
+    mask r-cnn
+
+    Parameters
+    ----------
+    n_dim: int
+        The number of classes to label
+
+    processing:
+        A class used for pre- and postprocessing.
+
+    weakly_supervised: bool
+        Indicates whether to use weakly supervised training
+   """
 
     def __init__(self, n_dim: int, processing, weakly_supervised: bool = False):
         """
-        Instance Segmenation based on mask r-cnn
-
-        Parameters
-        ----------
-        n_dim: int
-            The number of classes to label
-
-        processing:
-            A class used for pre- and postprocessing.
-
-        weakly_supervised: bool
-            Indicates whether to use weakly supervised training
         """
         super(Supervised, self).__init__()
         self._weakly_supervised = weakly_supervised
