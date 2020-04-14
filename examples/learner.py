@@ -1,23 +1,49 @@
 #!/usr/bin/python
 r"""
-Showing some of the functionality of the coco dataset
+Main file used to initialize and train a model.
 """
+from typing import Tuple
 import torch
+from torch.utils.data.dataloader import DataLoader
 from transferlearning.data import VaihingenDataBase
 from transferlearning.data import PennFudanDataset
 from transferlearning import Supervised, Processing
-from transferlearning import eval_detection
+from transferlearning import eval_masks, print_evaluation, eval_metrics
 import transferlearning
-# from transferlearning.engine import train, evaluate
-# from transferlearning.transforms import ToTensor, RandomHorizontalFlip,\
-        # Compose
-# from transferlearning.processing import Processing
+
 
 def collate_fn(batch):
     return tuple(zip(*batch))
 
-def train_test(database, path):
-    """Returns the train and test set"""
+
+def get_transform(training: bool):
+    """
+    Transforms raw data for train and test. Passed to the Database clases
+    """
+    transforms = []
+    transforms.append(transferlearning.ToTensor()) # convert PIL image to tensor
+    if training:
+        transforms.append(transferlearning.RandomHorizontalFlip(0.5))
+    return transferlearning.Compose(transforms)
+
+
+def train_test(database: transferlearning.data, path: str)\
+        -> Tuple[DataLoader, DataLoader]:
+    """Returns the train and test set
+
+    Parameters
+    ----------
+    database: transferlearning.data
+        Class used to load train and test examples
+
+    path: str
+        Path to loocate the raw files on the hdd
+
+    Returns
+    -------
+    Tuple[DataLoader, DataLoader]:
+        Train and Val Databases
+    """
     dataset = database(path, get_transform(training=True))
     dataset_test = database(path, get_transform(training=False))
     indices = torch.randperm(len(dataset)).tolist()
@@ -31,33 +57,29 @@ def train_test(database, path):
     data_loader_test = torch.utils.data.DataLoader(
         dataset_test, batch_size=1, shuffle=False, num_workers=4,
         collate_fn=collate_fn)
-    return data_loader, data_loader_test, indices[500:550]
+    return data_loader, data_loader_test
 
-def get_transform(training):
-    """The transform pipeline"""
-    transforms = []
-    transforms.append(transferlearning.ToTensor()) # convert PIL image to tensor
-    if training:
-        transforms.append(transferlearning.RandomHorizontalFlip(0.5))
-    return transferlearning.Compose(transforms)
 
 if __name__ == "__main__":
+    DEVICE = torch.device('cpu')
+    if torch.cuda.is_available():
+        DEVICE = torch.device('cuda')
+    # DATA, DATA_TEST = train_test(VaihingenDataBase, 'data')
+    DATA, DATA_TEST = train_test(PennFudanDataset, 'data/PennFudanPed')
     N_GROUPS = 2
-    DEVICE = torch.device(
-        'cuda') if torch.cuda.is_available() else torch.device('cpu')
-    # DEVICE = torch.device('cpu')
-    # DATA, DATA_TEST, indices = train_test(VaihingenDataBase, 'data')
-    DATA, DATA_TEST, indices = train_test(PennFudanDataset, 'data/PennFudanPed')
-    PROCESSING = Processing(800, 1333, [0.485, 0.456, 0.406],
-                            [0.229, 0.224, 0.225])
+    MEAN_DATA = [0.485, 0.456, 0.406]
+    STDV_DATA = [0.229, 0.224, 0.225]
+    PROCESSING = Processing(800, 1333, MEAN_DATA, STDV_DATA)
     MODEL = Supervised(N_GROUPS, PROCESSING)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = torch.optim.SGD(PARAMS, lr=0.005, momentum=0.9, weight_decay=0.0005)
     LR_SCHEDULER = torch.optim.lr_scheduler.StepLR(OPT, step_size=3, gamma=0.1)
     # import pdb; pdb.set_trace()
-    for epoch in range(1):
-        transferlearning.train(DATA, OPT, MODEL, DEVICE, epoch, 10)
+    for epoch in range(2):
+        transferlearning.train(DATA, OPT, MODEL, DEVICE, epoch, 20)
         LR_SCHEDULER.step()
-    pred, gt, imgs = transferlearning.evaluate(MODEL, DATA_TEST, DEVICE, indices)
-    res = eval_detection(pred, gt)
+        pred, gt, imgs = transferlearning.evaluate(MODEL, DATA_TEST, DEVICE)
+        res = eval_metrics(pred, gt, ['box', 'segm'])
+        print("The chainer metrics are")
+        print_evaluation(res)

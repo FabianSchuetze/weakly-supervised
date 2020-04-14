@@ -6,23 +6,42 @@ import math
 from typing import Dict
 import numpy as np
 import torch
+from torch.utils.data.dataloader import DataLoader
 import transferlearning.coco_eval_utils as coco_eval_utils
-# from transferlearning.coco_eval import CocoEvaluator
-# from transferlearning.coco_utils import get_coco_api_from_dataset
+
+from transferlearning.coco_eval import CocoEvaluator
+from transferlearning.coco_utils import get_coco_api_from_dataset
 
 
 @torch.no_grad()
-def evaluate(model, data_loader, device, indices) ->None:
-    """Evaluates hte model"""
+def evaluate(model: torch.nn.Module, data_loader: DataLoader,
+             device: torch.device) -> None:
+    """Evaluates the model
+
+    Parameters
+    ----------
+    model: troch.nn.Module
+        The model used to predict outputs
+
+    data_loader: DataLoader
+        The class from which samples are drawn
+
+    device: torch.device
+        device indication whether to run on cpu or gpu
+
+    Returns
+    -------
+    Tuple[List, List, List]
+        Different Lists containing the predictions, targets, and input data
+        used for evaluation
+    """
     cpu_device = torch.device("cpu")
     model.eval()
-    # coco = get_coco_api_from_dataset(data_loader.dataset, indices)
-    # iou_types = ['bbox', 'segm']
-    # coco_evaluator = CocoEvaluator(coco, iou_types)
+    coco = get_coco_api_from_dataset(data_loader.dataset)
+    iou_types = ['bbox', 'segm']
+    coco_evaluator = CocoEvaluator(coco, iou_types)
     dataset = iter(data_loader)
-    all_targets = []
-    all_preds = []
-    all_images = []
+    all_targets, all_preds, all_images = [], [], []
     # import pdb; pdb.set_trace()
     for _ in range(len(dataset)):
         images, targets = next(dataset)
@@ -30,16 +49,15 @@ def evaluate(model, data_loader, device, indices) ->None:
         all_targets.append(targets[0])
         images = list(i.to(device) for i in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-        # torch.cuda.synchronize()
         outputs = model(images)
         outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
         all_preds.append(outputs[0])
+        res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
+        coco_evaluator.update(res)
+    coco_evaluator.synchronize_between_processes()
+    coco_evaluator.accumulate()
+    coco_evaluator.summarize()
     return all_preds, all_targets, all_images
-        # res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
-        # # coco_evaluator.update(res)
-    # # coco_evaluator.synchronize_between_processes()
-    # # coco_evaluator.accumulate()
-    # # coco_evaluator.summarize()
 
 
 def check_losses(losses: float, loss_dict: Dict, target):
@@ -75,9 +93,8 @@ def get_logging():
     return metric_logger
 
 
-def train(data: torch.utils.data.dataloader.DataLoader,
-          optimizer: torch.optim, model, device: torch.device, epoch: int,
-          print_freq: int) -> None:
+def train(data: DataLoader, optimizer: torch.optim, model,
+          device: torch.device, epoch: int, print_freq: int) -> None:
     """Trains the model"""
     model.train()
     model.to(device)
@@ -98,4 +115,3 @@ def train(data: torch.utils.data.dataloader.DataLoader,
             lr_scheduler.step()
         logger.update(loss=losses, **loss_dict)
         logger.update(lr=optimizer.param_groups[0]["lr"])
-    # return metric_logger

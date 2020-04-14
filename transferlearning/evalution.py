@@ -1,33 +1,122 @@
 r"""
-Generates the evaluation functions by inheriting from chainer cv"""
-
+The evaluation functions by inheriting from chainer cv
+"""
 from typing import List, Dict
-from chainercv.evaluations import eval_detection_voc
+from chainercv.evaluations import eval_detection_coco, \
+    eval_instance_segmentation_coco
 import torch
 import numpy as np
 
-def _convert_pred_box(pred_box: torch.Tensor):
-    pred_box = np.array(pred_box)
-    return pred_box[:, [1, 0, 3, 2]]
 
+def _convert_box(pred_box: torch.Tensor):
+    """Converts box to a form that can be used by cocoeval"""
+    box = np.array(pred_box)
+    return box[:, [1, 0, 3, 2]]
 
-def eval_detection(predictions: List[Dict], gts: List[Dict]):
-# , pred_labels, pred_scores,
-                   # gt_bboxes, gt_labels):
-    """Does some stuff"""
+def _convert_mask(mask: torch.Tensor, threshold=0.5):
+    """Converts mask to a form that can be used by cocoeval"""
+    import pdb; pdb.set_trace()
+    mask = np.array(mask.squeeze(1)) if mask.dim() == 4 else np.array(mask)
+    mask = mask > threshold
+
+    # if mask.dim() == 4:
+        # mask = np.array(mask.squeeze(1))
+    # elif mask.dim() == 3:
+        # mask = np.array(mask, dtype=bool)
+    # else:
+        # raise Exception("expect dimension of 3 or 4")
+    return mask
+
+def eval_boxes(predictions: List[Dict], gts: List[Dict]) -> Dict:
+    """Returns the coco evaluation metric for box detection.
+
+    Parameters
+    ----------
+    predictions: List[Dict]
+        The predictions. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    gts: List[Dict]
+        The gts. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    Returns
+    -------
+    eval: Dict:
+        The results according to the coco metric
+    """
     # import pdb; pdb.set_trace()
-    cv_pred_boxes = []
-    cv_pred_labels = []
-    cv_pred_scores = []
-    cv_gt_boxes = []
-    cv_gt_labels = []
+    pred_boxes, pred_labels, pred_scores = [], [], []
+    gt_boxes, gt_labels, gt_areas = [], [], []
     for prediction, gt in zip(predictions, gts):
-        cv_pred_boxes.append(_convert_pred_box(prediction['boxes']))
-        cv_pred_labels.append(np.array(prediction['labels'], dtype=np.int32))
-        cv_pred_scores.append(np.array(prediction['scores']))
-        cv_gt_boxes.append(_convert_pred_box(gt['boxes']))
-        cv_gt_labels.append(np.array(gt['labels'], dtype=np.int32))
-    # import pdb; pdb.set_trace()
-    res = eval_detection_voc(cv_pred_boxes, cv_pred_labels, cv_pred_scores,
-                             cv_gt_boxes, cv_gt_labels)
+        pred_boxes.append(_convert_box(prediction['boxes']))
+        pred_labels.append(np.array(prediction['labels'], dtype=np.int32))
+        pred_scores.append(np.array(prediction['scores']))
+        gt_boxes.append(_convert_box(gt['boxes']))
+        gt_labels.append(np.array(gt['labels'], dtype=np.int32))
+        gt_areas.append(np.array(gt['area'], dtype=np.float32))
+    res = eval_detection_coco(pred_boxes, pred_labels, pred_scores, gt_boxes,
+                              gt_labels, gt_areas)
     return res
+
+
+def eval_masks(predictions: List[Dict], gts: List[Dict]) -> Dict:
+    """Returns the coco evaluation metric for instance segmentation.
+
+    Parameters
+    ----------
+    predictions: List[Dict]
+        The predictions. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    gts: List[Dict]
+        The gts. Length of the list indicates the number of samples.
+        Each element in the list are the predictions. Keys must be 'boxes',
+        'scores', and 'labels'.
+
+    Returns
+    -------
+    eval: Dict:
+        The results according to the coco metric
+    """
+    # import pdb; pdb.set_trace()
+    pred_masks, pred_labels, pred_scores = [], [], []
+    gt_masks, gt_labels, gt_area = [], [], []
+    for prediction, gt in zip(predictions, gts):
+        pred_masks.append(_convert_mask(prediction['masks']))
+        pred_labels.append(np.array(prediction['labels'], dtype=np.int32))
+        pred_scores.append(np.array(prediction['scores']))
+        gt_masks.append(_convert_mask(gt['masks']))
+        gt_labels.append(np.array(gt['labels'], dtype=np.int32))
+        gt_area.append(np.array(gt['area'], dtype=np.float32))
+    res = eval_instance_segmentation_coco(pred_masks, pred_labels, pred_scores,
+                                          gt_masks, gt_labels, gt_area)
+    return res
+
+
+def eval_metrics(predictions: List[Dict], gts: List[Dict], metrics: List[str])\
+        -> Dict:
+    """
+    Returns the metrics
+    """
+    # import pdb; pdb.set_trace()
+    results = {}
+    if  'segm' in metrics:
+        tmp = eval_masks(predictions, gts)
+        results['segm'] = tmp
+    if 'box' in metrics:
+        tmp = eval_boxes(predictions, gts)
+        results['box'] = tmp
+    return results
+
+
+def print_evaluation(metrics) -> None:
+    """
+    Prints the evaluation received from above
+    """
+    for key in metrics:
+        out = metrics[key]['coco_eval'].__str__()
+        print(out)

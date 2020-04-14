@@ -29,12 +29,11 @@ class TwoHeaded(torch.nn.Module):
 class Supervised(torch.nn.Module):
     """Teh supervised training"""
 
-    def __init__(self, n_dim, processing):
+    def __init__(self, n_dim: int, processing, weakly_supervised: bool = False):
         """
         The fully supervised model
         """
         super(Supervised, self).__init__()
-        # backbone, rpn = self._get_backbone()
         self._backbone, self._rpn = self._get_backbone()
         self._heads = self._get_heads(n_dim)
         # self._model = torch.nn.Sequential(backbone, rpn, head)
@@ -93,7 +92,6 @@ class Supervised(torch.nn.Module):
         orig_sizes = [(i.shape[1], i.shape[2]) for i in images]
         images, targets = self._processing(images, targets)
         targets = targets if targets[0] else None
-        # res, loss_dict = self._model(images.tensors, targets)
         base = self._backbone(images.tensors)
         rois, loss_dict = self._rpn(images, base, targets)
         res, loss_head = self._heads(base, rois, images.image_sizes, targets)
