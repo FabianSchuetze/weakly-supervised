@@ -47,10 +47,10 @@ def train_test(database: transferlearning.data, path: str)\
     dataset = database(path, get_transform(training=True))
     dataset_test = database(path, get_transform(training=False))
     indices = torch.randperm(len(dataset)).tolist()
-    # dataset = torch.utils.data.Subset(dataset, indices[:500])
-    # dataset_test = torch.utils.data.Subset(dataset_test, indices[500:550])
-    dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    dataset = torch.utils.data.Subset(dataset, indices[:500])
+    dataset_test = torch.utils.data.Subset(dataset_test, indices[500:550])
+    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
+    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=1, shuffle=True, num_workers=0,
         collate_fn=collate_fn)
@@ -64,13 +64,13 @@ if __name__ == "__main__":
     DEVICE = torch.device('cpu')
     if torch.cuda.is_available():
         DEVICE = torch.device('cuda')
-    # DATA, DATA_TEST = train_test(VaihingenDataBase, 'data/vaihingen')
-    DATA, DATA_TEST = train_test(PennFudanDataset, 'data/PennFudanPed')
-    N_GROUPS = 2
+    DATA, DATA_TEST = train_test(VaihingenDataBase, 'data/vaihingen')
+    # DATA, DATA_TEST = train_test(PennFudanDataset, 'data/PennFudanPed')
+    N_GROUPS = 5
     MEAN_DATA = [0.485, 0.456, 0.406]
     STDV_DATA = [0.229, 0.224, 0.225]
     PROCESSING = Processing(200, 200, MEAN_DATA, STDV_DATA)
-    MODEL = Supervised(N_GROUPS, PROCESSING)
+    MODEL = Supervised(N_GROUPS, PROCESSING, weakly_supervised=True)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = torch.optim.SGD(PARAMS, lr=0.005, momentum=0.9, weight_decay=0.0005)

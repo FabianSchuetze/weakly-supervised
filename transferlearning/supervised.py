@@ -53,8 +53,10 @@ class Supervised(torch.nn.Module):
         self._processing = processing
 
     def _get_backbone(self):
-        """the backbone of the model, used to downsample the input images to a
-        features representation"""
+        """
+        the backbone of the model, used to downsample the input images to a
+        features representation
+        """
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
         return model.backbone, model.rpn
 
@@ -71,24 +73,39 @@ class Supervised(torch.nn.Module):
         if self._weakly_supervised:
             transfer = TransferFunction(1024 * 4, 256, out_dim)
             weakly_supervised = WeaklySupervised(in_channels, 256, out_dim)
-
-        roi_heads = RoIHeads(
-            box_roi_pool=model.roi_heads.box_roi_pool,
-            box_head=model.roi_heads.box_head,
-            box_predictor=box_pred,
-            fg_iou_thresh=0.5,
-            bg_iou_thresh=0.5,
-            batch_size_per_image=512,
-            positive_fraction=0.25,
-            bbox_reg_weights=None,
-            score_thresh=0.05,
-            nms_thresh=0.5,
-            detections_per_img=100,
-            mask_roi_pool=model.roi_heads.mask_roi_pool,
-            mask_head=model.roi_heads.mask_head,
-            mask_predictor=mask_predictor)
-            # transfer=transfer,
-            # weakly_supervised=weakly_supervised)
+            roi_heads = RoIHeads(
+                box_roi_pool=model.roi_heads.box_roi_pool,
+                box_head=model.roi_heads.box_head,
+                box_predictor=box_pred,
+                fg_iou_thresh=0.5,
+                bg_iou_thresh=0.5,
+                batch_size_per_image=512,
+                positive_fraction=0.25,
+                bbox_reg_weights=None,
+                score_thresh=0.05,
+                nms_thresh=0.5,
+                detections_per_img=100,
+                mask_roi_pool=model.roi_heads.mask_roi_pool,
+                mask_head=model.roi_heads.mask_head,
+                mask_predictor=mask_predictor,
+                transfer=transfer,
+                weakly_supervised=weakly_supervised)
+        else:
+            roi_heads = RoIHeads(
+                box_roi_pool=model.roi_heads.box_roi_pool,
+                box_head=model.roi_heads.box_head,
+                box_predictor=box_pred,
+                fg_iou_thresh=0.5,
+                bg_iou_thresh=0.5,
+                batch_size_per_image=512,
+                positive_fraction=0.25,
+                bbox_reg_weights=None,
+                score_thresh=0.05,
+                nms_thresh=0.5,
+                detections_per_img=100,
+                mask_roi_pool=model.roi_heads.mask_roi_pool,
+                mask_head=model.roi_heads.mask_head,
+                mask_predictor=mask_predictor)
         return roi_heads
 
     def forward(self, images: List[torch.Tensor],
