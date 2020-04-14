@@ -1,11 +1,11 @@
-oWeakly-Supervised Computer Vision Learning
+Weakly-Supervised Computer Vision Learning
 --------------------------------------------
 
 
 This repo implements the common weakly-supervised CV algorithms to faciliate
 comparison between them.
 
-o
+
 Install
 -------
 Please isntall the library via pip with the `setup.py` file. Please not that at
@@ -37,13 +37,3 @@ Datasets
 The module so far has been tested with the PennFudanDataSet and the Vaihingen
 2D dataset. For a detailed description of how to integrate these two dataset
 into the current code, please go to the data [folder](./data/README.md)
-
-
-
-
-
-
-
-
-
-
