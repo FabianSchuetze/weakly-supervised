@@ -768,6 +768,8 @@ class RoIHeads(torch.nn.Module):
             regression_targets = None
             matched_idxs = None
 
+        import pdb; pdb.set_trace()
+
         box_features = self.box_roi_pool(features, proposals, image_shapes)
         box_features = self.box_head(box_features)
         class_logits, box_regression = self.box_predictor(box_features)
@@ -810,7 +812,7 @@ class RoIHeads(torch.nn.Module):
                 pos_matched_idxs = None
 
             if self.mask_roi_pool is not None:
-                # import pdb; pdb.set_trace()
+                import pdb; pdb.set_trace()
                 mask_features = self.mask_roi_pool(features, mask_proposals, image_shapes)
                 mask_features = self.mask_head(mask_features)
                 if self.transfer:

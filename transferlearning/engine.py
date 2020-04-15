@@ -141,6 +141,7 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
         Determines after how many training iterations notificaitons are printed
         to stdout
     """
+    import pdb; pdb.set_trace()
     model.train()
     model.to(device)
     logger = get_logging()

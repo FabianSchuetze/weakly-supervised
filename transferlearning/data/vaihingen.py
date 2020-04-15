@@ -228,7 +228,6 @@ class VaihingenDataBase:
         target: Dict[string, Torch]
             All required training targets
         """
-        # import pdb; pdb.set_trace()
         img, target = self._generate_crop(idx)
         masks, labels = self._generate_targets(target)
         if self._inadmissible_example(masks, labels):
@@ -244,3 +243,7 @@ class VaihingenDataBase:
 
     def __len__(self):
         return len(self._index)
+
+    def n_classes(self) -> int:
+        """The number of different classes in the db"""
+        return 2

@@ -7,6 +7,7 @@ import torch
 from torch.utils.data.dataloader import DataLoader
 from transferlearning.data import VaihingenDataBase
 from transferlearning.data import PennFudanDataset
+from transferlearning.data import CocoDB
 from transferlearning import Supervised, Processing
 from transferlearning import eval_masks, print_evaluation, eval_metrics
 import transferlearning
@@ -43,13 +44,11 @@ def train_test(dataset, dataset_test) -> Tuple[DataLoader, DataLoader]:
     Tuple[DataLoader, DataLoader]:
         Train and Val Databases
     """
-    # dataset = database(path, get_transform(training=True))
-    # dataset_test = database(path, get_transform(training=False))
     indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:5000])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[5000:5500])
-    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
+    # dataset = torch.utils.data.Subset(dataset, indices[:5000])
+    # dataset_test = torch.utils.data.Subset(dataset_test, indices[5000:5500])
+    dataset = torch.utils.data.Subset(dataset, indices[:-50])
+    dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
     data_loader = torch.utils.data.DataLoader(
         dataset, batch_size=1, shuffle=True, num_workers=0,
         collate_fn=collate_fn)
@@ -59,21 +58,21 @@ def train_test(dataset, dataset_test) -> Tuple[DataLoader, DataLoader]:
     return data_loader, data_loader_test
 
 
+# TODO: Bug when runnin with weakly_supervised=True and coco
 if __name__ == "__main__":
     DEVICE = torch.device('cpu')
-    if torch.cuda.is_available():
-        DEVICE = torch.device('cuda')
-    # DB = VaihingenDataBase('data/vaihingen', get_transforms(training=True))
-    DB = CocoDB('data/coco', 'train2014', get_transform(training=True))
-    DB_TEST = CocoDB('data/coco', 'train2014', get_transform(training=False))
-    # DATA, DATA_TEST = train_test(VaihingenDataBase, 'data/vaihingen')
+    # if torch.cuda.is_available():
+        # DEVICE = torch.device('cuda')
+    DB = VaihingenDataBase('data/vaihingen', get_transform(training=True))
+    DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
+    # DB = CocoDB('data/coco', 'train2014', get_transform(training=True))
+    # DB_TEST = CocoDB('data/coco', 'train2014', get_transform(training=False))
     DATA, DATA_TEST = train_test(DB, DB_TEST)
-    # DATA, DATA_TEST = train_test(PennFudanDataset, 'data/PennFudanPed')
-    N_GROUPS = 5
+    N_GROUPS = DB.n_classes()
     MEAN_DATA = [0.485, 0.456, 0.406]
     STDV_DATA = [0.229, 0.224, 0.225]
     PROCESSING = Processing(200, 200, MEAN_DATA, STDV_DATA)
-    MODEL = Supervised(N_GROUPS, PROCESSING, weakly_supervised=True)
+    MODEL = Supervised(N_GROUPS, PROCESSING, weakly_supervised=False)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = torch.optim.SGD(PARAMS, lr=0.005, momentum=0.9, weight_decay=0.0005)
