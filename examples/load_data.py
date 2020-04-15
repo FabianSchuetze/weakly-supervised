@@ -1,5 +1,6 @@
 from transferlearning.data import VaihingenDataBase
 from transferlearning.data import PennFudanDataset
+from transferlearning.data import CocoDB
 import transferlearning
 
 def get_transform(training):
@@ -14,3 +15,4 @@ if __name__ == "__main__":
     # dataset = VaihingenDataBase('data/vaihingen', get_transform(training=True))
     dataset = PennFudanDataset('data/PennFudanPed',
                                 get_transform(training=False))
+    dataset = CocoDB('data/coco' ,'train2014')
