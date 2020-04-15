@@ -1,0 +1,9 @@
+lanuage: python
+python:
+    - "3.6"
+cache: pip
+install:
+    - pip install -r requirements.txt
+    - pip install . 
+script:
+    - python examples/load_data.py

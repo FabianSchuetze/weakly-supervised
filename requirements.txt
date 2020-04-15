@@ -1,0 +1,6 @@
+matplotlib>=3.0.0
+cython>=0.2.8
+pytorch>=1.4.0
+torchvision>=0.5.0
+chainercv>=0.13.1
+pycocotools>=2.0.0

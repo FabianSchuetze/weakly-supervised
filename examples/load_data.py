@@ -11,6 +11,6 @@ def get_transform(training):
     return transferlearning.Compose(transforms)
 
 if __name__ == "__main__":
-    # dataset = VaihingenDataBase('data', get_transform(training=True))
+    # dataset = VaihingenDataBase('data/vaihingen', get_transform(training=True))
     dataset = PennFudanDataset('data/PennFudanPed',
                                 get_transform(training=False))
