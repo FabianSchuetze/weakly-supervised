@@ -5,6 +5,7 @@ import os
 from PIL import Image
 import numpy as np
 import torch
+from .data_utils import extract_boxes
 
 class PennFudanDataset:
     def __init__(self, root, transforms):
@@ -36,6 +37,8 @@ class PennFudanDataset:
 
         # get bounding box coordinates for each mask
         num_objs = len(obj_ids)
+        import pdb; pdb.set_trace()
+        boxes = extract_bboxes(masks)
         boxes = []
         for i in range(num_objs):
             pos = np.where(masks[i])
