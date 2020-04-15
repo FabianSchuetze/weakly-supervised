@@ -2,8 +2,12 @@ lanuage: python
 python:
     - "3.6"
 cache: pip
-install:
+before install:
+    #- pip install -U
+    #- "export PYTHONPATH=$PYTHONPATH:$(pwd)"
+    - pip install Cython
     - pip install -r requirements.txt
-    - pip install . 
+install:
+    - python setup.py install
 script:
     - python examples/load_data.py
