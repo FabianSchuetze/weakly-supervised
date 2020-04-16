@@ -37,8 +37,6 @@ class PennFudanDataset:
 
         # get bounding box coordinates for each mask
         num_objs = len(obj_ids)
-        import pdb; pdb.set_trace()
-        boxes = extract_bboxes(masks)
         boxes = []
         for i in range(num_objs):
             pos = np.where(masks[i])

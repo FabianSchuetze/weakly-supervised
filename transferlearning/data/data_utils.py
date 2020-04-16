@@ -47,3 +47,13 @@ def check_area(img: np.array) -> bool:
     xmax = pos[1].max()
     ymax = pos[0].max()
     return xmin != xmax and ymin != ymax
+
+
+def compute_stats(dataset, n_samples):
+    means = torch.zeros((n_samples, 3))
+    for i in range(n_samples):
+        idx = np.random.randint(0, len(dataset))
+        img = dataset[idx][0]
+        means[i, :] = img.mean(dim=(1, 2))
+    return means
+

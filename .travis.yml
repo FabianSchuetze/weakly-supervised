@@ -1,8 +1,9 @@
 dist: bionic
 sudo: true
 before_install:
-    pip install -r requirements.txt
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
 install:
-    python setup.py install
+    python setup.py build develop
 script:
     - python examples/load_data.py
