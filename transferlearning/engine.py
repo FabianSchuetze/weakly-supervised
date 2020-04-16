@@ -58,7 +58,7 @@ def check_losses(losses: float, loss_dict: Dict, target) -> None:
             rounded = np.round(loss_dict[key].item(), 2)
             print(key + ': ' + str(rounded))
         print("The error occured with sample id: %s"\
-              %(str(target['image_id'])))
+              %(str(target[0]['image_id'])))
         sys.exit(1)
 
 
