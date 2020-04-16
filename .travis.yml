@@ -1,13 +1,8 @@
-lanuage: python
-python:
-    - "3.6"
-cache: pip
-before install:
-    #- pip install -U
-    #- "export PYTHONPATH=$PYTHONPATH:$(pwd)"
-    - pip install Cython
-    - pip install -r requirements.txt
+dist: bionic
+sudo: true
+before_install:
+    pip install -r requirements.txt
 install:
-    - python setup.py install
+    python setup.py install
 script:
     - python examples/load_data.py
