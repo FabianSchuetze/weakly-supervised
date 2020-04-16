@@ -159,3 +159,12 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
             lr_scheduler.step()
         logger.update(loss=losses, **loss_dict)
         logger.update(lr=optimizer.param_groups[0]["lr"])
+
+def train_transfer(data_box: DataLoader, data_mask, optimizer, model,
+                   device, epoch, print_freq) -> None:
+    """Implements the simple stage-wise training of XXXX"""
+    import pdb; pdb.set_trace()
+    model._heads.train_mask = False
+    train(data_box, optimizer, model, device, epoch, print_freq)
+    model._heads.train_mask = True
+    train(data_mask, optimizer, model, device, epoch, print_freq)

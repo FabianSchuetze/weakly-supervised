@@ -49,7 +49,7 @@ def train_test(database: transferlearning.data, path: str)\
     dataset = database(path, get_transform(training=True))
     dataset_test = database(path, get_transform(training=False))
     indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:1000])
+    dataset = torch.utils.data.Subset(dataset, indices[:200])
     dataset_test = torch.utils.data.Subset(dataset_test, indices[1000:1500])
     # dataset = torch.utils.data.Subset(dataset, indices[:-50])
     # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
@@ -57,7 +57,7 @@ def train_test(database: transferlearning.data, path: str)\
         dataset, batch_size=2, shuffle=True, num_workers=4,
         collate_fn=collate_fn)
     data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=0,
+        dataset_test, batch_size=2, shuffle=False, num_workers=0,
         collate_fn=collate_fn)
     return data_loader, data_loader_test
 
@@ -81,7 +81,7 @@ def train_test_coco(database: transferlearning.data, path: str)\
     dataset = database(path, 'train2014', get_transform(training=True))
     dataset_test = database(path, 'train2014', get_transform(training=False))
     indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:-500])
+    dataset = torch.utils.data.Subset(dataset, indices[:-200])
     dataset_test = torch.utils.data.Subset(dataset_test, indices[-500])
     # dataset = torch.utils.data.Subset(dataset, indices[:-50])
     # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
@@ -98,6 +98,7 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         DEVICE = torch.device('cuda')
     DATA, DATA_TEST = train_test(VaihingenDataBase, 'data/vaihingen')
+    DATA_MASK, DATA_TEST = train_test(VaihingenDataBase, 'data/vaihingen')
     # DATA, DATA_TEST = train_test_coco(CocoDB, 'data/coco')
     CONFIG = conf("Vaihingen")
     # N_GROUPS = CONFIG.num_classes
@@ -112,6 +113,8 @@ if __name__ == "__main__":
     # import pdb; pdb.set_trace()
     for epoch in range(10):
         transferlearning.train(DATA, OPT, MODEL, DEVICE, epoch, 50)
+        # transferlearning.train_transfer(DATA, DATA_MASK,
+                                        # OPT, MODEL, DEVICE, epoch, 50)
         LR_SCHEDULER.step()
         pred, gt, imgs = transferlearning.evaluate(MODEL, DATA_TEST, DEVICE)
         res = eval_metrics(pred, gt, ['box', 'segm'])
