@@ -25,30 +25,6 @@ def get_transform(training: bool):
     return transferlearning.Compose(transforms)
 
 
-# def print_summaries(writer, metrics, cur_epoch):
-    # """
-    # Prints some val accurcies to tensorboard
-    # """
-    # summaries = ['ap/iou=0.50:0.95/area=all/max_dets=100',
-                 # 'ar/iou=0.50:0.95/area=all/max_dets=100']
-    # # import pdb; pdb.set_trace()
-    # for key in res:
-        # for summary in summaries:
-            # tag = 'accuracy/' + key + '/' + summary
-            # numbers = metrics[key][summary]
-            # writer.add_scalar(tag, numbers.mean(), cur_epoch)
-
-
-# def experiment_summary(writer, model, datasets, optimizer, data_name):
-    # """
-    # Writes a summary of the experiment
-    # """
-    # writer.add_text('architecture/', str(model))
-    # writer.add_text('dataset', data_name)
-    # writer.add_text('number datasets/:', str(len(datasets)))
-    # writer.add_text('optimizer/', str(optimizer))
-
-
 if __name__ == "__main__":
     DEVICE = torch.device('cpu')
     if torch.cuda.is_available():
@@ -58,7 +34,7 @@ if __name__ == "__main__":
     DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
     DATA_NAME = "Vaihingen"
     CONFIG = conf(DATA_NAME)
-    DATASETS = train_test([DB, DB_BOX, DB_TEST], [100, 100, 100], CONFIG)
+    DATASETS = train_test([DB, DB_BOX, DB_TEST], [50, 10, 50], CONFIG)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING, weakly_supervised=True)
@@ -68,14 +44,17 @@ if __name__ == "__main__":
     LR_SCHEDULER = torch.optim.lr_scheduler.StepLR(OPT, step_size=3, gamma=0.1)
     WRITER = SummaryWriter()
     logging.log_architecture(WRITER, MODEL, DATASETS, OPT, DATA_NAME)
+    WRITER_ITER = 0
+    # import pdb; pdb.set_trace()
     for epoch in range(10):
-        transferlearning.train(DATASETS[0], OPT, MODEL, DEVICE, epoch, 20,
-                               WRITER)
-        transferlearning.train_transfer(DATASETS[0], DATASETS[1],
-                                        OPT, MODEL, DEVICE, epoch, 50,
-                                        WRITER)
+        WRITER_ITER = transferlearning.train(DATASETS[0], OPT, MODEL, DEVICE,
+                                             epoch, 20, WRITER, WRITER_ITER)
+        # transferlearning.train_transfer(DATASETS[0], DATASETS[1],
+                                        # OPT, MODEL, DEVICE, epoch, 50,
+                                        # WRITER)
+        pred, gt, imgs = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE,
+                                                   epoch, 20)
         LR_SCHEDULER.step()
-        pred, gt, imgs = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE)
         res = eval_metrics(pred, gt, ['box', 'segm'])
         print_evaluation(res)
         logging.log_accuracies(WRITER, res, epoch)

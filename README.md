@@ -8,9 +8,11 @@ comparison between them.
 
 Install
 -------
-Please isntall the library via pip with the `setup.py` file. Please not that at
-the moment there is not yet a `requirements.txt` file which helps with the 
-dependencies. That will be added soon.
+Please install the dependencies of the module with `pip install -r
+requirements.txt`. Then, install the library with 
+`python setup.py build develop`. The installation was tested successfully 
+with the AWS deep learning instaces at Ubuntu 18.04. 
+
 
 
 
@@ -37,3 +39,4 @@ Datasets
 The module so far has been tested with the PennFudanDataSet and the Vaihingen
 2D dataset. For a detailed description of how to integrate these two dataset
 into the current code, please go to the data [folder](./data/README.md)
+

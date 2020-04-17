@@ -3,6 +3,7 @@ Methods to train and evaluate the model
 """
 import sys
 import math
+import time
 from typing import Dict, Optional
 import numpy as np
 import torch
@@ -11,8 +12,8 @@ from transferlearning import logging
 
 
 @torch.no_grad()
-def evaluate(model: torch.nn.Module, data_loader: DataLoader,
-             device: torch.device) -> None:
+def evaluate(model: torch.nn.Module, data: DataLoader,
+             device: torch.device, epoch: int, print_freq: int) -> None:
     """Evaluates the model
 
     Parameters
@@ -34,16 +35,19 @@ def evaluate(model: torch.nn.Module, data_loader: DataLoader,
     """
     cpu_device = torch.device("cpu")
     model.eval()
-    dataset = iter(data_loader)
     all_targets, all_preds, all_images = [], [], []
-    for _ in range(len(dataset)):
-        images, targets = next(dataset)
+    logger = get_logging(training=False)
+    header = 'Epoch Val: [{}]'.format(epoch)
+    for images, targets in logger.log_every(data, print_freq, header):
         all_images.append(images[0])
         all_targets.append(targets[0])
         images = list(i.to(device) for i in images)
+        model_time = time.time()
         outputs = model(images)
+        model_time = time.time() - model_time
         outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
         all_preds.append(outputs[0])
+        logger.update(model_time=model_time)
     return all_preds, all_targets, all_images
 
 
@@ -105,20 +109,21 @@ def learning_rate_scheduler(optimizer: torch.optim, epoch: int, n_steps: int)\
     return lr_scheduler
 
 
-def get_logging():
+def get_logging(training=True):
     """
     Instantiates a logging class. The class both writes information to
     stdout and also iterates over the dataset
     """
     metric_logger = logging.MetricLogger(delimiter="  ")
-    metric_logger.add_meter(
-        'lr', logging.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    if training:
+        metric_logger.add_meter(
+            'lr', logging.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     return metric_logger
 
 
 def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
           device: torch.device, epoch: int, print_freq: int,
-          writer=None) -> None:
+          writer = None, writer_iter = None) -> None:
     """Trains the model
 
     Parameters
@@ -144,10 +149,9 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
     """
     model.train()
     model.to(device)
-    logger = get_logging()
+    logger = get_logging(training=True)
     header = 'Epoch: [{}]'.format(epoch)
     lr_scheduler = learning_rate_scheduler(optimizer, epoch, len(data))
-    n_step = epoch*len(data)
     for images, targets in logger.log_every(data, print_freq, header):
         optimizer.zero_grad()
         images = list(i.to(device) for i in images)
@@ -155,7 +159,7 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
         loss_dict = model(images, targets)
         losses = sum(loss for loss in loss_dict.values())
         if writer:
-            logging.log_losses(writer, loss_dict, print_freq, n_step)
+            logging.log_losses(writer, loss_dict, print_freq, writer_iter)
         check_losses(losses, loss_dict, targets)
         losses.backward()
         optimizer.step()
@@ -163,14 +167,17 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
             lr_scheduler.step()
         logger.update(loss=losses, **loss_dict)
         logger.update(lr=optimizer.param_groups[0]["lr"])
-        n_step += 1
+        writer_iter += 1
+    return writer_iter
 
 def train_transfer(data_box: DataLoader, data_mask, optimizer, model,
                    device, epoch, print_freq,
-                   writer=None) -> None:
+                   writer=None, writer_iter = None) -> int:
     """Implements the simple stage-wise training of XXXX"""
-    import pdb; pdb.set_trace()
-    model._heads.train_mask = False
-    train(data_box, optimizer, model, device, epoch, print_freq, writer)
+    model._heads.train_mask = False  # Doesn't train the mask head
+    writer_iter = train(data_box, optimizer, model, device, epoch, print_freq, 
+                        writer, writer_iter)
     model._heads.train_mask = True
-    train(data_mask, optimizer, model, device, epoch, print_freq, writer)
+    writer_iter = train(data_mask, optimizer, model, device, epoch, print_freq, 
+                        writer, writer_iter)
+    return writer_iter
