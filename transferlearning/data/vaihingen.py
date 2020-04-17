@@ -92,14 +92,14 @@ class VaihingenDataBase:
                 min_y = tmp_min_y
         return next_key
 
-    # def _check_area(self, img: np.array) -> bool:
-        # """Checks if img has a positive area"""
-        # pos = np.where(img)
-        # xmin = pos[1].min()
-        # ymin = pos[0].min()
-        # xmax = pos[1].max()
-        # ymax = pos[0].max()
-        # return xmin != xmax and ymin != ymax
+    def _check_area(self, img: np.array) -> bool:
+        """Checks if img has a positive area"""
+        pos = np.where(img)
+        xmin = pos[1].min()
+        ymin = pos[0].min()
+        xmax = pos[1].max()
+        ymax = pos[0].max()
+        return xmin != xmax and ymin != ymax
 
     def _identify_targets(self, blob: Dict[int, Tuple]):
         """

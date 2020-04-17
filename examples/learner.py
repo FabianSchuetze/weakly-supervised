@@ -2,18 +2,15 @@
 r"""
 Main file used to initialize and train a model.
 """
-from typing import Tuple
+# from typing import Tuple
 import torch
-from torch.utils.data.dataloader import DataLoader
-from transferlearning.data import VaihingenDataBase
-from transferlearning.data import PennFudanDataset
+from torch.utils.tensorboard import SummaryWriter
+from transferlearning.data import VaihingenDataBase, PennFudanDataset, CocoDB,\
+        train_test
 from transferlearning import Supervised, Processing
-from transferlearning import eval_masks, print_evaluation, eval_metrics
+from transferlearning import print_evaluation, eval_metrics
+from transferlearning.config import conf
 import transferlearning
-
-
-def collate_fn(batch):
-    return tuple(zip(*batch))
 
 
 def get_transform(training: bool):
@@ -27,58 +24,57 @@ def get_transform(training: bool):
     return transferlearning.Compose(transforms)
 
 
-def train_test(database: transferlearning.data, path: str)\
-        -> Tuple[DataLoader, DataLoader]:
-    """Returns the train and test set
-
-    Parameters
-    ----------
-    database: transferlearning.data
-        Class used to load train and test examples
-
-    path: str
-        Path to loocate the raw files on the hdd
-
-    Returns
-    -------
-    Tuple[DataLoader, DataLoader]:
-        Train and Val Databases
+def print_summaries(writer, metrics, cur_epoch):
     """
-    dataset = database(path, get_transform(training=True))
-    dataset_test = database(path, get_transform(training=False))
-    indices = torch.randperm(len(dataset)).tolist()
-    dataset = torch.utils.data.Subset(dataset, indices[:500])
-    dataset_test = torch.utils.data.Subset(dataset_test, indices[500:550])
-    # dataset = torch.utils.data.Subset(dataset, indices[:-50])
-    # dataset_test = torch.utils.data.Subset(dataset_test, indices[-50:])
-    data_loader = torch.utils.data.DataLoader(
-        dataset, batch_size=1, shuffle=True, num_workers=0,
-        collate_fn=collate_fn)
-    data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=1, shuffle=False, num_workers=0,
-        collate_fn=collate_fn)
-    return data_loader, data_loader_test
+    Prints some val accurcies to tensorboard
+    """
+    summaries = ['ap/iou=0.50:0.95/area=all/max_dets=100',
+                 'ar/iou=0.50:0.95/area=all/max_dets=100']
+    # import pdb; pdb.set_trace()
+    for key in res:
+        for summary in summaries:
+            tag = 'accuracy/' + key + '/' + summary
+            numbers = metrics[key][summary]
+            writer.add_scalar(tag, numbers.mean(), cur_epoch)
+
+
+def experiment_summary(writer, model, datasets, optimizer, data_name):
+    """
+    Writes a summary of the experiment
+    """
+    writer.add_text('architecture/', str(model))
+    writer.add_text('dataset', data_name)
+    writer.add_text('number datasets/:', str(len(datasets)))
+    writer.add_text('optimizer/', str(optimizer))
 
 
 if __name__ == "__main__":
     DEVICE = torch.device('cpu')
     if torch.cuda.is_available():
         DEVICE = torch.device('cuda')
-    DATA, DATA_TEST = train_test(VaihingenDataBase, 'data/vaihingen')
-    # DATA, DATA_TEST = train_test(PennFudanDataset, 'data/PennFudanPed')
-    N_GROUPS = 5
-    MEAN_DATA = [0.485, 0.456, 0.406]
-    STDV_DATA = [0.229, 0.224, 0.225]
-    PROCESSING = Processing(200, 200, MEAN_DATA, STDV_DATA)
-    MODEL = Supervised(N_GROUPS, PROCESSING, weakly_supervised=True)
+    DB = VaihingenDataBase('data/vaihingen', get_transform(training=True))
+    DB_BOX = VaihingenDataBase('data/vaihingen', get_transform(training=True))
+    DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
+    DATA_NAME = "Vaihingen"
+    CONFIG = conf(DATA_NAME)
+    DATASETS = train_test([DB, DB_BOX, DB_TEST], [100, 100, 100], CONFIG)
+    PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
+                            CONFIG.std)
+    MODEL = Supervised(CONFIG.num_classes, PROCESSING, weakly_supervised=True)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = torch.optim.SGD(PARAMS, lr=0.005, momentum=0.9, weight_decay=0.0005)
     LR_SCHEDULER = torch.optim.lr_scheduler.StepLR(OPT, step_size=3, gamma=0.1)
-    # import pdb; pdb.set_trace()
-    for epoch in range(2):
-        transferlearning.train(DATA, OPT, MODEL, DEVICE, epoch, 20)
+    WRITER = SummaryWriter()
+    experiment_summary(WRITER, MODEL, DATASETS, OPT, DATA_NAME)
+    for epoch in range(10):
+        transferlearning.train(DATASETS[0], OPT, MODEL, DEVICE, epoch, 20,
+                               WRITER)
+        # transferlearning.train_transfer(DATASETS[0], DATASETS[1],
+                                        # OPT, MODEL, DEVICE, epoch, 50)
         LR_SCHEDULER.step()
-        pred, gt, imgs = transferlearning.evaluate(MODEL, DATA_TEST, DEVICE)
+        pred, gt, imgs = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE)
         res = eval_metrics(pred, gt, ['box', 'segm'])
         print_evaluation(res)
+        print_summaries(WRITER, res, epoch)
+    WRITER.close()

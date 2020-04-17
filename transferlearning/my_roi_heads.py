@@ -538,7 +538,8 @@ class RoIHeads(torch.nn.Module):
                  keypoint_predictor=None,
                  # Transfer
                  transfer=None,
-                 weakly_supervised=None
+                 weakly_supervised=None,
+                 train_mask=True
                  ):
         super(RoIHeads, self).__init__()
 
@@ -575,6 +576,8 @@ class RoIHeads(torch.nn.Module):
 
         self.transfer = transfer
         self.weakly_supervised = weakly_supervised
+
+        self.train_mask = train_mask
 
     def has_mask(self):
         if self.mask_roi_pool is None:
@@ -794,7 +797,7 @@ class RoIHeads(torch.nn.Module):
                     }
                 )
 
-        if self.has_mask():
+        if self.has_mask() and self.train_mask:
             mask_proposals = [p["boxes"] for p in result]
             if self.training:
                 assert matched_idxs is not None

@@ -145,3 +145,8 @@ class Supervised(torch.nn.Module):
             return loss_dict
         res = self._processing.postprocess(res, images.image_sizes, orig_sizes)
         return res
+
+
+    def __str__(self):
+        architecture = "Weakly Supervised: " + str(self._weakly_supervised)
+        return architecture
