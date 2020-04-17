@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data.dataloader import DataLoader
 import transferlearning.logging as logging
+from torch.utils.tensorboard import SummaryWriter
 
 
 @torch.no_grad()
@@ -117,7 +118,8 @@ def get_logging():
 
 
 def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
-          device: torch.device, epoch: int, print_freq: int) -> None:
+          device: torch.device, epoch: int, print_freq: int,
+          writer=None) -> None:
     """Trains the model
 
     Parameters
@@ -146,12 +148,18 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
     logger = get_logging()
     header = 'Epoch: [{}]'.format(epoch)
     lr_scheduler = learning_rate_scheduler(optimizer, epoch, len(data))
+    n_step = epoch*len(data)
     for images, targets in logger.log_every(data, print_freq, header):
         optimizer.zero_grad()
         images = list(i.to(device) for i in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         loss_dict = model(images, targets)
         losses = sum(loss for loss in loss_dict.values())
+        if writer:
+            if (n_step % print_freq) == 0:
+                # import pdb; pdb.set_trace()
+                for key in loss_dict:
+                    writer.add_scalar('Loss/train/' + key, loss_dict[key], n_step)
         check_losses(losses, loss_dict, targets)
         losses.backward()
         optimizer.step()
@@ -159,6 +167,7 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
             lr_scheduler.step()
         logger.update(loss=losses, **loss_dict)
         logger.update(lr=optimizer.param_groups[0]["lr"])
+        n_step += 1
 
 def train_transfer(data_box: DataLoader, data_mask, optimizer, model,
                    device, epoch, print_freq) -> None:
