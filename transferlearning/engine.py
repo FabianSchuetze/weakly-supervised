@@ -7,8 +7,7 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 from torch.utils.data.dataloader import DataLoader
-import transferlearning.logging as logging
-from torch.utils.tensorboard import SummaryWriter
+from transferlearning import logging
 
 
 @torch.no_grad()
@@ -156,10 +155,7 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
         loss_dict = model(images, targets)
         losses = sum(loss for loss in loss_dict.values())
         if writer:
-            if (n_step % print_freq) == 0:
-                # import pdb; pdb.set_trace()
-                for key in loss_dict:
-                    writer.add_scalar('Loss/train/' + key, loss_dict[key], n_step)
+            logging.log_losses(writer, loss_dict, print_freq, n_step)
         check_losses(losses, loss_dict, targets)
         losses.backward()
         optimizer.step()
@@ -172,7 +168,7 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
 def train_transfer(data_box: DataLoader, data_mask, optimizer, model,
                    device, epoch, print_freq) -> None:
     """Implements the simple stage-wise training of XXXX"""
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
     model._heads.train_mask = False
     train(data_box, optimizer, model, device, epoch, print_freq)
     model._heads.train_mask = True
