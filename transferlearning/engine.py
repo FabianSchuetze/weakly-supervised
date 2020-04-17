@@ -166,10 +166,11 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
         n_step += 1
 
 def train_transfer(data_box: DataLoader, data_mask, optimizer, model,
-                   device, epoch, print_freq) -> None:
+                   device, epoch, print_freq,
+                   writer=None) -> None:
     """Implements the simple stage-wise training of XXXX"""
     import pdb; pdb.set_trace()
     model._heads.train_mask = False
-    train(data_box, optimizer, model, device, epoch, print_freq)
+    train(data_box, optimizer, model, device, epoch, print_freq, writer)
     model._heads.train_mask = True
-    train(data_mask, optimizer, model, device, epoch, print_freq)
+    train(data_mask, optimizer, model, device, epoch, print_freq, writer)

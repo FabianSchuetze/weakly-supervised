@@ -71,8 +71,9 @@ if __name__ == "__main__":
     for epoch in range(10):
         transferlearning.train(DATASETS[0], OPT, MODEL, DEVICE, epoch, 20,
                                WRITER)
-        # transferlearning.train_transfer(DATASETS[0], DATASETS[1],
-                                        # OPT, MODEL, DEVICE, epoch, 50)
+        transferlearning.train_transfer(DATASETS[0], DATASETS[1],
+                                        OPT, MODEL, DEVICE, epoch, 50,
+                                        WRITER)
         LR_SCHEDULER.step()
         pred, gt, imgs = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE)
         res = eval_metrics(pred, gt, ['box', 'segm'])
