@@ -39,7 +39,7 @@ class Processing(nn.Module):
         # # type: (List[Tensor], Optional[List[Dict[str, Tensor]]])
         images = [img for img in images]
         for idx, img in enumerate(images):
-            target_index = targets[idx] if targets is not None else None
+            target_index = targets[0] if targets is not None else None
             img = self.normalize(img)
             img, target_index = self.resize(img, target_index)
             images[idx] = img
