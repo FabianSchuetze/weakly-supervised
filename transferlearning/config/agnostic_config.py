@@ -15,8 +15,8 @@ __C.display_iter = 10
 
 __C.double_bias = True
 
-__C.decay_lr = 0.1
+__C.gamma = 0.1
 
-__C.decay_step_lr = 10
+__C.decay_step_size = 3
 
 __C.num_workers = 4

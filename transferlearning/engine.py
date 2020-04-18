@@ -4,10 +4,11 @@ Methods to train and evaluate the model
 import sys
 import math
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import numpy as np
 import torch
 from torch.utils.data.dataloader import DataLoader
+from torch.utils.tensorboard.writer import SummaryWriter
 from transferlearning import logging
 
 
@@ -125,9 +126,11 @@ def get_logging(training=True):
     return metric_logger
 
 
-def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
-          device: torch.device, epoch: int, print_freq: int,
-          writer = None, writer_iter = None) -> None:
+def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
+                     model: torch.nn.Module, device: torch.device,
+                     epoch: int, print_freq: int,
+                     writer: Optional[SummaryWriter] = None,
+                     writer_iter: Optional[int] = None) -> int:
     """Trains the model
 
     Parameters
@@ -151,6 +154,7 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
         Determines after how many training iterations notificaitons are printed
         to stdout
     """
+    data = datasets[0]
     model.train()
     model.to(device)
     logger = get_logging(training=True)
@@ -174,14 +178,18 @@ def train(data: DataLoader, optimizer: torch.optim, model: torch.nn.Module,
         writer_iter += 1
     return writer_iter
 
-def train_transfer(data_box: DataLoader, data_mask, optimizer, model,
-                   device, epoch, print_freq,
-                   writer=None, writer_iter = None) -> int:
+def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
+                   model: torch.nn.Module, device: torch.device,
+                   epoch: int, print_freq: int,
+                   writer: Optional[SummaryWriter] = None,
+                   writer_iter: Optional[int] = None) -> int:
     """Implements the simple stage-wise training of XXXX"""
+    data_box = datasets[0]
+    data_mask = datasets[1]
     model._heads.train_mask = False  # Doesn't train the mask head
-    writer_iter = train(data_box, optimizer, model, device, epoch, print_freq, 
-                        writer, writer_iter)
+    writer_iter = train_supervised([data_box], optimizer, model, device,
+                                   epoch, print_freq, writer, writer_iter)
     model._heads.train_mask = True
-    writer_iter = train(data_mask, optimizer, model, device, epoch, print_freq, 
-                        writer, writer_iter)
+    writer_iter = train_supervised([data_mask], optimizer, model, device, epoch,
+                                   print_freq, writer, writer_iter)
     return writer_iter
