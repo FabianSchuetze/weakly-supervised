@@ -33,6 +33,8 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
         Different Lists containing the predictions, targets, and input data
         used for evaluation
     """
+    n_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
     cpu_device = torch.device("cpu")
     model.eval()
     all_targets, all_preds, all_images = [], [], []
@@ -42,12 +44,14 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
         all_images.append(images[0])
         all_targets.append(targets[0])
         images = list(i.to(device) for i in images)
+        torch.cuda.synchronize()
         model_time = time.time()
         outputs = model(images)
         model_time = time.time() - model_time
         outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
         all_preds.append(outputs[0])
         logger.update(model_time=model_time)
+    torch.set_num_threads(n_threads)
     return all_preds, all_targets, all_images
 
 

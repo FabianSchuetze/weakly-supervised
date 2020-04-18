@@ -5,8 +5,6 @@ __C = EasyDict()
 
 conf = __C
 
-__C.stride = 16
-
 __C.learning_rate = 0.001
 
 __C.momentum = 0.9

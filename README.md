@@ -9,11 +9,9 @@ comparison between them.
 Install
 -------
 Please install the dependencies of the module with `pip install -r
-requirements.txt`. Then, install the library with 
-`python setup.py build develop`. The installation was tested successfully 
-with the AWS deep learning instaces at Ubuntu 18.04. 
-
-
+requirements.txt`. Then, install the library with
+`python setup.py build develop`. The installation was tested successfully
+with the AWS deep learning instaces at Ubuntu 18.04.
 
 
 Run Test
@@ -32,11 +30,9 @@ to
 MODEL = Supervised(N_GROUPS, PROCESSING, weakly_supervised=True)
 ```
 
-
-
 Datasets
 --------
-The module so far has been tested with the PennFudanDataSet and the Vaihingen
-2D dataset. For a detailed description of how to integrate these two dataset
+The module so far has been tested with the PennFudanDataSet, the Vaihingen
+2D dataset, Coco 2014, and Pascal VOC 2007. For a detailed description of how to integrate these datasets
 into the current code, please go to the data [folder](./data/README.md)
 
