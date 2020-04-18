@@ -133,7 +133,7 @@ class Supervised(torch.nn.Module):
             self._backbone.eval()
             self._rpn.eval()
             self._heads.eval()
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         orig_sizes = [(i.shape[1], i.shape[2]) for i in images]
         images, targets = self._processing(images, targets)
         targets = targets if targets[0] else None
