@@ -51,12 +51,17 @@ def check_area(img: np.array) -> bool:
     return xmin != xmax and ymin != ymax
 
 
-def compute_stats(dataset, n_samples):
+def sample_stats(dataset, n_samples, fun='mean'):
+    """Returns the sample value of function fun accross n_samples in the
+    dataset"""
     means = torch.zeros((n_samples, 3))
     for i in range(n_samples):
         idx = np.random.randint(0, len(dataset))
         img = dataset[idx][0]
-        means[i, :] = img.mean(dim=(1, 2))
+        if fun == 'mean':
+            means[i, :] = img.mean(dim=(1, 2))
+        elif fun == 'std':
+            means[i, :] = img.std(dim=(1, 2))
     return means
 
 

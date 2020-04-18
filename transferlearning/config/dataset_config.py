@@ -15,8 +15,8 @@ __C.PennFudanDataset.batch_size = 1
 
 __C.Vaihingen = EasyDict()
 
-__C.Vaihingen.mean = [0.485, 0.456, 0.406]
-__C.Vaihingen.std = [0.229, 0.224, 0.225]
+__C.Vaihingen.mean = [0.472, 0.317, 0.316]
+__C.Vaihingen.std = [0.192, 0.128, 0.125]
 __C.Vaihingen.num_classes = 5
 __C.Vaihingen.min_size = 200
 __C.Vaihingen.max_size = 200

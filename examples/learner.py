@@ -75,6 +75,7 @@ if __name__ == "__main__":
                                           step_size=CONFIG.decay_step_size,
                                           gamma=CONFIG.gamma)
     WRITER = SummaryWriter()
+    # WRITER = None
     logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CLARGS.dataset)
     WRITER_ITER = 0
     if CLARGS.weakly_supervised:
