@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.com/FabianSchuetze/weakly-supervised.svg?branch=master)](https://travis-ci.com/FabianSchuetze/weakly-supervised)
 Weakly-Supervised Computer Vision Learning
 --------------------------------------------
 
