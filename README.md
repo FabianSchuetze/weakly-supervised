@@ -14,21 +14,11 @@ requirements.txt`. Then, install the library with
 with the AWS deep learning instaces at Ubuntu 18.04.
 
 
-Run Test
---------
-The predictions can be run from `examples/learner.py`. The by-default supported
-datasets are described below. The example creates a [Mask
-R-CNN](https://arxiv.org/abs/1703.06870) model and predicts bounding boxes,
-labels and instacen segmentation. The
-[network](./transferlearning/supervised.py) contains experimental support for
-the weakly-supervised mask predictions from bounding boxes as described in
-[Learning to Segment Every Thing](https://arxiv.org/abs/1703.06870). To allow
-for weak-supervision, please modify line `77` from 
-```python
-MODEL = Supervised(N_GROUPS, PROCESSING, weakly_supervised=False)
-to
-MODEL = Supervised(N_GROUPS, PROCESSING, weakly_supervised=True)
-```
+Run Models
+----------
+The models can be run from the root directory with
+`python examples/learner.py --dataset 'DS' --weakly_supervised` for training a weakly supervised model on dataset 'DS'. If you prefer the conventional supervised instance segmentation framework, you have to replace `--weakly_supervised` with `supervised`. Please read below which datasets are supported by default. When choosing `weakly-supervised` you create a model from the [Learning to Segment Every Thing](https://arxiv.org/abs/1703.06870) paper. This model trains feature embedding extensively on bounding boxes, and then trains a segmentation-head on a small set of images with segmented annotations.   If you instead choose the `supervised`, you work with the [Mask
+R-CNN](https://arxiv.org/abs/1703.06870) framework. 
 
 Datasets
 --------

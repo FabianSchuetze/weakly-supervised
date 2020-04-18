@@ -9,4 +9,4 @@ before_install:
 install:
     - python setup.py build develop
 script:
-    - python examples/load_data.py
+    - python tests/load_class.py
