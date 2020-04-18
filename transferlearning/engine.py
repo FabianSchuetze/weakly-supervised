@@ -184,12 +184,19 @@ def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
                    writer: Optional[SummaryWriter] = None,
                    writer_iter: Optional[int] = None) -> int:
     """Implements the simple stage-wise training of XXXX"""
-    data_box = datasets[0]
-    data_mask = datasets[1]
+    data_mask = datasets[0]
+    data_box = datasets[1]
+    for para in model.parameters():
+        para.requires_grad = True
+    # import pdb; pdb.set_trace()
     model._heads.train_mask = False  # Doesn't train the mask head
     writer_iter = train_supervised([data_box], optimizer, model, device,
                                    epoch, print_freq, writer, writer_iter)
     model._heads.train_mask = True
+    for para in model.parameters():
+        para.requires_grad = False
+    for para in model._heads.weakly_supervised.parameters():
+        para.requires_grad = True
     writer_iter = train_supervised([data_mask], optimizer, model, device, epoch,
                                    print_freq, writer, writer_iter)
     return writer_iter

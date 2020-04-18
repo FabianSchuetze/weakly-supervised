@@ -12,10 +12,16 @@ from torch.utils.tensorboard import SummaryWriter
 from transferlearning.data import VaihingenDataBase, PennFudanDataset, CocoDB,\
         train_test
 from transferlearning import Supervised, Processing
-from transferlearning import print_evaluation, eval_metrics
+from transferlearning import print_evaluation, eval_metrics, train_supervised,\
+        train_transfer
 from transferlearning.config import conf
 from transferlearning import logging
 import transferlearning
+
+import resource
+rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (2048, rlimit[1]))
+
 
 
 def get_transform(training: bool):
@@ -36,8 +42,10 @@ def parse_args():
     parser.add_argument('--dataset', dest='dataset', help='training dataset',
                         default='Vaihingen', type=str)
     parser.add_argument('--weakly_supervised', dest='weakly_supervised',
-                        help='Whether to train weakly supervised or not',
-                        default='True', type=bool)
+                        action='store_true')
+    parser.add_argument('--supervised', dest='weakly_supervised',
+                        action='store_false')
+    parser.set_defaults(weakly_supervised=True)
     args = parser.parse_args()
     return args
 
@@ -63,10 +71,11 @@ if __name__ == "__main__":
     DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
     CONFIG = conf(CLARGS.dataset)
     print_config(CONFIG)
-    DATASETS = train_test([DB, DB_BOX, DB_TEST], [50, 10, 50], CONFIG)
+    DATASETS = train_test([DB, DB_BOX, DB_TEST], [200, 1000, 200], CONFIG)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
-    MODEL = Supervised(CONFIG.num_classes, PROCESSING, weakly_supervised=True)
+    MODEL = Supervised(CONFIG.num_classes, PROCESSING,
+                       weakly_supervised=CLARGS.weakly_supervised)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = optim.SGD(PARAMS, lr=CONFIG.learning_rate, momentum=CONFIG.momentum,
@@ -78,10 +87,7 @@ if __name__ == "__main__":
     # WRITER = None
     logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CLARGS.dataset)
     WRITER_ITER = 0
-    if CLARGS.weakly_supervised:
-        train = transferlearning.train_transfer
-    else:
-        train = transferlearning.train_supervised
+    train = train_transfer if CLARGS.weakly_supervised else train_supervised
     # import pdb; pdb.set_trace()
     for epoch in range(10):
         WRITER_ITER = train(DATASETS, OPT, MODEL, DEVICE, epoch,
