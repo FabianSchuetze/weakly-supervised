@@ -31,6 +31,7 @@ Preliminary Results
 The figure below summarizes the effectivness of weakly-suprevised learning on the Vaihigen dataset:  
 <img src="Results.png" alt="drawing" height="400" width="400"/>  
 The training protocol for each of the experimant is as follows:  
+
 *Weakly-Supervised*  
 Each epoch begins by training 1000 images exclusively on bounding boxes and object labels. This helps to refine the backbone of the model and the ROI proposal network. Then, 500 images are used to train it's instance segmentation capabilities by transfer learning: The backbone and ROI proposal network transforms the input picture in a feature representation. Given a set of ROIs, the network predicts pixel-by-pixel annotations. These annotations are estimated with a de-convolutional network with weights _w_seg_. With weak-supervision, these weights are a function of the weights _w_Box_ which are used to generate bounding box annotations for each class, _w_Seg_ = _f(w_Box)_. The 500 images are thus used to train the small network _f_ to predict good instance segmentation weights.
 
