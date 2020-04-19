@@ -45,7 +45,7 @@ Finally, the last training protocol uses 1500 images for end-to-end training and
 Datasets
 --------
 The module so far has been tested with the PennFudanDataSet, the Vaihingen
-2D dataset, Coco 2014, and Pascal VOC 2007. For a detailed description of how to integrate these datasets
+2D dataset, and Coco 2014. For a detailed description of how to integrate these datasets
 into the current code, please go to the data [folder](./data/README.md).
 
 
@@ -57,4 +57,5 @@ ToDo
 slows down some GPUs)
 -  [ ] Comapre the result with a Deeplab implementation
 -  [ ] Unit tests (so far I only check if the module can be loaded)
+-  [ ] Complete PASCAL VOC integration.
 
