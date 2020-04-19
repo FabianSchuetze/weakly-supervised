@@ -118,6 +118,11 @@ def get_logging(training=True):
     """
     Instantiates a logging class. The class both writes information to
     stdout and also iterates over the dataset
+
+    Parameters
+    ----------
+    training: bool
+        If true, losses are smoothed
     """
     metric_logger = logging.MetricLogger(delimiter="  ")
     if training:
@@ -135,7 +140,7 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
 
     Parameters
     ----------
-    data: dataloader
+    datasets: List[dataloader]
         the dataloader used for training
 
     optimizer: troch.optim
@@ -153,6 +158,12 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
     print_freq: int
         Determines after how many training iterations notificaitons are printed
         to stdout
+
+    writer: Optional[SummaryWriter]
+        Tensorboard usmmary writter to save experiments
+
+    writer_iter: Optional[int]
+        Species the gradient steps (location) for the writer
     """
     data = datasets[0]
     model.train()
@@ -183,7 +194,8 @@ def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
                    epoch: int, print_freq: int,
                    writer: Optional[SummaryWriter] = None,
                    writer_iter: Optional[int] = None) -> int:
-    """Implements the simple stage-wise training of XXXX"""
+    """Implements the simple stage-wise training of 'Segment Every Thing'.
+    Arguments are the same as in the supervised function"""
     data_mask = datasets[0]
     data_box = datasets[1]
     for para in model.parameters():
