@@ -193,10 +193,6 @@ def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
     writer_iter = train_supervised([data_box], optimizer, model, device,
                                    epoch, print_freq, writer, writer_iter)
     model._heads.train_mask = True
-    for para in model.parameters():
-        para.requires_grad = False
-    for para in model._heads.weakly_supervised.parameters():
-        para.requires_grad = True
     writer_iter = train_supervised([data_mask], optimizer, model, device, epoch,
                                    print_freq, writer, writer_iter)
     return writer_iter
