@@ -95,8 +95,9 @@ def train_test(databases: List,
     for  db, lower, upper in zip(databases, thresh[:-1], thresh[1:]):
         subset = Subset(db, indices[lower:upper])
         shuffle = upper < thresh[-1]
+        num_workers = config.num_workers if upper < thresh[-1] else 0
         datasets.append(DataLoader(subset, batch_size=config.batch_size,
                                    shuffle=shuffle,
-                                   num_workers=config.num_workers,
+                                   num_workers=num_workers,
                                    collate_fn=collate_fn))
     return datasets

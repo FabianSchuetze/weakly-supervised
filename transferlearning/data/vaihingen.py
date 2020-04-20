@@ -3,10 +3,10 @@ Uses the generate crops of size 200x200 and labels for the images
 """
 import os
 from typing import List, Dict, Tuple, Optional
+import multiprocessing
 import numpy as np
 from PIL import Image
 from scipy import ndimage
-# import torch
 from transferlearning.transforms import Compose
 from .data_utils import to_dict, extract_boxes, check_area
 
@@ -29,9 +29,12 @@ class VaihingenDataBase:
     """
 
     def __init__(self, path: str, transforms: Optional[Compose] = None):
+        # import pdb; pdb.set_trace()
         self._path = path
+        self._cache_path = os.path.join(self._path, 'cache')
         self._index = self._generate_indices()
         self._transforms = transforms
+        self._maybe_pickle()
 
     def _generate_indices(self):
         """
@@ -50,6 +53,14 @@ class VaihingenDataBase:
             tmp_index = [(file, i) for i in zip(rows.ravel(), cols.ravel())]
             index.extend(tmp_index)
         return index
+
+    def _crop_img(self, idx: int) -> Image.Image:
+        info = self._index[idx]
+        left, top = info[1]
+        img = Image.open(self._path + '/images/' + info[0])
+        region = (top, left, top+200, left+200)
+        new_img = img.crop(region)
+        return new_img
 
     def _generate_crop(self, idx: int) ->Tuple[Image.Image, Image.Image]:
         """
@@ -139,25 +150,6 @@ class VaihingenDataBase:
                 blob.pop(next_object)
         return masks, labels
 
-    # def _extract_boxes(self, masks: List[np.array]) -> np.array:
-        # """Finds the bounding boxes of each masks
-
-        # Returns
-        # -------
-        # bboxes: np.array
-            # a numpy array with (xmin, ymin, width, height)i
-        # """
-        # bboxes = np.zeros((len(masks), 4))
-        # # import pdb; pdb.set_trace()
-        # for idx, img in enumerate(masks):
-            # pos = np.where(img)
-            # xmin = pos[1].min()
-            # ymin = pos[0].min()
-            # xmax = pos[1].max()
-            # ymax = pos[0].max()
-            # bboxes[idx, :] = [xmin, ymin, xmax, ymax]
-        # return bboxes
-
     def _convert_to_label(self, color: np.array) -> int:
         """
         Converts the input image to a label. The annotations are encoded in
@@ -211,6 +203,62 @@ class VaihingenDataBase:
         no_labels = not labels
         return wrong_object or no_labels
 
+    #TODO: This is dangerous as the only check is existence of the folder
+    def _maybe_pickle(self) -> None:
+        """
+        Pickels the targets to a local cache if the cache doesn't exist.
+        """
+        if os.path.exists(self._cache_path):
+            return
+        os.makedirs(self._cache_path)
+        all_indices = [i for i in range(0, len(self._index))]
+        n_cpu = multiprocessing.cpu_count()
+        workload = [int(i * len(all_indices) / n_cpu) for i in range(n_cpu)]
+        workload.append(all_indices[-1])
+        processes = []
+        for lower, upper in zip(workload[:-1], workload[1:]):
+            proc = multiprocessing.Process(target=self._pickle_files,
+                                           args=(all_indices[lower:upper],))
+            processes.append(proc)
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+    def _pickle_files(self, indices: List[int]) ->None:
+        """"
+        Pickels the db to a chache file for faster loading in the future
+        """
+        print("Creates a cached db once for faster loading")
+        for idx in indices:
+            img, target = self._generate_crop(idx)
+            masks, labels = self._generate_targets(target)
+            if self._inadmissible_example(masks, labels):
+                print(str(idx) + ", inadmissible")
+                np.save(self._cache_path + '/' + str(idx) + '.npy', {})
+                continue
+            boxes = extract_boxes(masks)
+            area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
+            img_info = [img.height, img.width]
+            tmp = {}
+            tmp['masks'] = masks
+            tmp['labels'] = labels
+            tmp['bboxes'] = boxes
+            tmp['area'] = area
+            tmp['im_info'] = img_info
+            np.save(self._cache_path + '/' + str(idx) + '.npy', tmp)
+
+    #TODO: Better errorchecking
+    def _read_target_cache(self, idx):
+        """Reads the pickeld target from disk"""
+        res = np.load(self._cache_path + '/' + str(idx) + '.npy',
+                      allow_pickle=True)[()]
+        if res:
+            return res
+        return self._read_target_cache(np.random.randint(0, len(self._index)))
+        # except:
+            # print("could not find the file, is the db pickeled correcty?")
+
     def __getitem__(self, idx: int) ->Tuple:
         """
         Returns a img and target pair from the database.
@@ -228,16 +276,20 @@ class VaihingenDataBase:
         target: Dict[string, Torch]
             All required training targets
         """
-        # import pdb; pdb.set_trace()
-        img, target = self._generate_crop(idx)
-        masks, labels = self._generate_targets(target)
-        if self._inadmissible_example(masks, labels):
-            return self.__getitem__(np.random.randint(0, len(self._index)))
-        bboxes = extract_boxes(masks)
-        area = (bboxes[:, 3] - bboxes[:, 1]) * (bboxes[:, 2] - bboxes[:, 0])
-        img_info = [img.height, img.width]
-        target = to_dict(masks, bboxes.tolist(), labels, img_info, idx,
-                         area.tolist())
+        img = self._crop_img(idx)
+        # img, target = self._generate_crop(idx)
+        # masks, labels = self._generate_targets(target)
+        # if self._inadmissible_example(masks, labels):
+            # return self.__getitem__(np.random.randint(0, len(self._index)))
+        # bboxes = extract_boxes(masks)
+        # area = (bboxes[:, 3] - bboxes[:, 1]) * (bboxes[:, 2] - bboxes[:, 0])
+        # img_info = [img.height, img.width]
+        target = self._read_target_cache(idx)
+        # target = to_dict(masks, bboxes.tolist(), labels, img_info, idx,
+                         # area.tolist())
+        target = to_dict(target['masks'], target['bboxes'].tolist(),
+                         target['labels'], target['im_info'], idx,
+                         target['area'].tolist())
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target
