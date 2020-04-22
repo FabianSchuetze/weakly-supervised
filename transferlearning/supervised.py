@@ -57,10 +57,13 @@ class Supervised(torch.nn.Module):
         Indicates whether to use weakly supervised training
    """
 
-    def __init__(self, n_dim: int, processing, weakly_supervised: bool = False):
+    def __init__(self, n_dim: int, processing,
+                 weakly_supervised: Optional[bool] = False,
+                 only_boxes: Optional[bool] = False):
         """
         """
         super(Supervised, self).__init__()
+        self._only_boxes = only_boxes
         self._weakly_supervised = weakly_supervised
         self._backbone, self._rpn = self._get_backbone()
         self._heads = self._get_heads(n_dim)
@@ -75,6 +78,7 @@ class Supervised(torch.nn.Module):
         return model.backbone, model.rpn
 
     # TODO: Make the bbox head class agnostic, -> benchmark
+    # TODO: Better implementation of bounding box only output
     def _get_heads(self, out_dim: int):
         """Defines the box, classificaiton and mask heads of the network"""
         model = models.detection.maskrcnn_resnet50_fpn(pretrained=True)
@@ -84,7 +88,20 @@ class Supervised(torch.nn.Module):
         mask_predictor = SupervisedMask(in_channels, 256, out_dim)
 
         # import pdb; pdb.set_trace()
-        if self._weakly_supervised:
+        if self._only_boxes:
+            roi_heads = RoIHeads(
+                box_roi_pool=model.roi_heads.box_roi_pool,
+                box_head=model.roi_heads.box_head,
+                box_predictor=box_pred,
+                fg_iou_thresh=0.5,
+                bg_iou_thresh=0.5,
+                batch_size_per_image=512,
+                positive_fraction=0.25,
+                bbox_reg_weights=None,
+                score_thresh=0.05,
+                nms_thresh=0.5,
+                detections_per_img=100)
+        elif self._weakly_supervised:
             transfer = TransferFunction(1024 * 4, 256, out_dim)
             weakly_supervised = WeaklySupervised(in_channels, 256, out_dim)
             roi_heads = RoIHeads(

@@ -44,7 +44,10 @@ def parse_args():
                         action='store_true')
     parser.add_argument('--supervised', dest='weakly_supervised',
                         action='store_false')
+    parser.add_argument('--only_boxes', dest='only_boxes',
+                        action='store_true')
     parser.set_defaults(weakly_supervised=True)
+    parser.set_defaults(only_boxes=False)
     args = parser.parse_args()
     return args
 
@@ -69,14 +72,14 @@ if __name__ == "__main__":
     DB = VaihingenDataBase('data/vaihingen', get_transform(training=True))
     DB_BOX = VaihingenDataBase('data/vaihingen', get_transform(training=True))
     DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
-    CONFIG = conf(CLARGS.dataset)
-    CONFIG.weakly_supervised = CLARGS.weakly_supervised
+    CONFIG = conf(CLARGS.dataset, CLARGS)
     print_config(CONFIG)
-    DATASETS = train_test([DB, DB_BOX, DB_TEST], [1000, 1000, 500], CONFIG)
+    DATASETS = train_test([DB, DB_BOX, DB_TEST], [1500, 1000, 500], CONFIG)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,
-                       weakly_supervised=CLARGS.weakly_supervised)
+                       weakly_supervised=CONFIG.weakly_supervised,
+                       only_boxes=CONFIG.only_boxes)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = optim.SGD(PARAMS, lr=CONFIG.learning_rate, momentum=CONFIG.momentum,
@@ -85,8 +88,7 @@ if __name__ == "__main__":
                                           step_size=CONFIG.decay_step_size,
                                           gamma=CONFIG.gamma)
     WRITER = SummaryWriter()
-    # WRITER = None
-    logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CLARGS.dataset)
+    logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CONFIG.dataset)
     transferlearning.train(DATASETS, OPT, MODEL, DEVICE, CONFIG, WRITER, SCHEDULER)
     pred, gt, _ = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE,
                                             CONFIG.max_epochs + 1,

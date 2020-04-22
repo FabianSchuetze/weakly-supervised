@@ -1,3 +1,6 @@
+r"""
+The config for different datasets
+"""
 from easydict import EasyDict
 
 __C = EasyDict()
@@ -30,3 +33,13 @@ __C.Coco.num_classes = 91
 __C.Coco.min_size = 800
 __C.Coco.max_size = 1333
 __C.Coco.batch_size = 1
+
+
+__C.Pascal = EasyDict()
+
+__C.Pascal.mean = [0.445, 0.456, 0.3862]
+__C.Pascal.std = [0.2405, 0.2315, 0.2303]
+__C.Pascal.num_classes = 20
+__C.Pascal.min_size = 250
+__C.Pascal.max_size = 500
+__C.Pascal.batch_size = 2
