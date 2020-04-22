@@ -10,20 +10,20 @@ import datetime
 import easydict
 from torch.utils.tensorboard import SummaryWriter
 from transferlearning.data import VaihingenDataBase, PennFudanDataset, CocoDB,\
-        train_test
+        train_test, PascalVOCDB
 from transferlearning import Supervised, Processing
 from transferlearning import print_evaluation, eval_metrics
 from transferlearning.config import conf
 from transferlearning import logging
 import transferlearning
 
-import resource
-rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (3096, rlimit[1]))
+# import resource
+# rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+# resource.setrlimit(resource.RLIMIT_NOFILE, (3096, rlimit[1]))
 
 
 
-def get_transform(training: bool):
+def transform(training: bool):
     """
     Transforms raw data for train and test. Passed to the Database clases
     """
@@ -64,17 +64,39 @@ def print_config(conf_dict: easydict) ->None:
           'data-preprocessing paras')
 
 
+def get_db(config):
+    """
+    Returns the correct databases for training
+    """
+    if config.dataset == 'Vaihingen':
+        db = VaihingenDataBase(config.root_folder, transform(True))
+        db_box = VaihingenDataBase(config.root_folder, transform(True))
+        db_test = VaihingenDataBase(config.root_folder, transform(False))
+    elif config.dataset == 'Pascal':
+        # Pascal only has boxes, so copy the database
+        db = PascalVOCDB(config.root_folder, config.year,
+                         transforms=transform(True))
+        db_box = PascalVOCDB(config.root_folder, config.year,
+                         transforms=transform(True))
+        db_test = PascalVOCDB(config.root_folder, config.year,
+                              transforms=transform(False))
+    else:
+        print("Implement properly")
+    return db, db_box, db_test
+
+
 if __name__ == "__main__":
     CLARGS = parse_args()
+    CONFIG = conf(CLARGS.dataset, CLARGS)
     DEVICE = torch.device('cpu')
     if torch.cuda.is_available():
         DEVICE = torch.device('cuda')
-    DB = VaihingenDataBase('data/vaihingen', get_transform(training=True))
-    DB_BOX = VaihingenDataBase('data/vaihingen', get_transform(training=True))
-    DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
-    CONFIG = conf(CLARGS.dataset, CLARGS)
+    DBS = get_db(CONFIG)
+    # DB = VaihingenDataBase('data/vaihingen', get_transform(training=True))
+    # DB_BOX = VaihingenDataBase('data/vaihingen', get_transform(training=True))
+    # DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
     print_config(CONFIG)
-    DATASETS = train_test([DB, DB_BOX, DB_TEST], [1500, 1000, 500], CONFIG)
+    DATASETS = train_test(DBS, [40, 1000, 500], CONFIG)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,
@@ -93,7 +115,7 @@ if __name__ == "__main__":
     pred, gt, _ = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE,
                                             CONFIG.max_epochs + 1,
                                             CONFIG.display_iter)
-    res = eval_metrics(pred, gt, ['box', 'segm'])
+    res = eval_metrics(pred, gt, CONFIG.loss_types)
     print_evaluation(res)
     logging.log_accuracies(WRITER, res, CONFIG.max_epochs + 1)
     WRITER.close()

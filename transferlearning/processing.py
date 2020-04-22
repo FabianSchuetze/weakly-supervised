@@ -44,7 +44,8 @@ class Processing(nn.Module):
             img, target_index = self.resize(img, target_index)
             images[idx] = img
             if targets is not None and target_index is not None:
-                assert img.shape[-2:] == target_index['masks'].shape[-2:]
+                if 'masks' in target_index.keys():
+                    assert img.shape[-2:] == target_index['masks'].shape[-2:]
                 targets[idx] = target_index
         image_sizes = [img.shape[-2:] for img in images]
         images = self.batch_images(images)
