@@ -53,9 +53,11 @@ ToDo
 ----
 
 -  [ ] Run experiments with the other datasets to compare against SOTA results.
--  [ ] Use caching in the databases to allow faster data loading (At the moment, the data serving latency
+-  [ ] Use caching in the databases to allow faster data loading (At the moment, the data serving latency -> First experiental inegration in branch cache.
 slows down some GPUs)
 -  [ ] Comapre the result with a Deeplab implementation
 -  [ ] Unit tests (so far I only check if the module can be loaded)
--  [ ] Complete PASCAL VOC integration.
+-  [ ] Complete Pascal VOC Integration. Train to compare Faster RCNN results.
+
+
 
