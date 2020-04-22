@@ -136,6 +136,7 @@ class Supervised(torch.nn.Module):
         orig_sizes = [(i.shape[1], i.shape[2]) for i in images]
         images, targets = self._processing(images, targets)
         targets = targets if targets[0] else None
+        # import pdb; pdb.set_trace()
         base = self._backbone(images.tensors)
         rois, loss_dict = self._rpn(images, base, targets)
         res, loss_head = self._heads(base, rois, images.image_sizes, targets)

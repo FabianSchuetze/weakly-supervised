@@ -6,21 +6,20 @@ Main file used to initialize and train a model.
 import argparse
 import torch
 import torch.optim as optim
-import time
+import datetime
 import easydict
 from torch.utils.tensorboard import SummaryWriter
 from transferlearning.data import VaihingenDataBase, PennFudanDataset, CocoDB,\
         train_test
 from transferlearning import Supervised, Processing
-from transferlearning import print_evaluation, eval_metrics, train_supervised,\
-        train_transfer
+from transferlearning import print_evaluation, eval_metrics
 from transferlearning.config import conf
 from transferlearning import logging
 import transferlearning
 
 import resource
 rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (2048, rlimit[1]))
+resource.setrlimit(resource.RLIMIT_NOFILE, (3096, rlimit[1]))
 
 
 
@@ -52,7 +51,8 @@ def parse_args():
 
 def print_config(conf_dict: easydict) ->None:
     """Pretty prints the config"""
-    print("\nThe config at " + str(time.time()) + " is:")
+    time = datetime.datetime.now()
+    print("\nThe config at " + time.strftime("%Y-%m-%d") + " is:")
     for key in conf_dict:
         print(key + ': ' + str(conf_dict[key]))
     print('To change the parameters, please edit\n'
@@ -70,8 +70,9 @@ if __name__ == "__main__":
     DB_BOX = VaihingenDataBase('data/vaihingen', get_transform(training=True))
     DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
     CONFIG = conf(CLARGS.dataset)
+    CONFIG.weakly_supervised = CLARGS.weakly_supervised
     print_config(CONFIG)
-    DATASETS = train_test([DB, DB_BOX, DB_TEST], [200, 1000, 200], CONFIG)
+    DATASETS = train_test([DB, DB_BOX, DB_TEST], [1000, 1000, 500], CONFIG)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,
@@ -86,16 +87,11 @@ if __name__ == "__main__":
     WRITER = SummaryWriter()
     # WRITER = None
     logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CLARGS.dataset)
-    WRITER_ITER = 0
-    train = train_transfer if CLARGS.weakly_supervised else train_supervised
-    # import pdb; pdb.set_trace()
-    for epoch in range(10):
-        WRITER_ITER = train(DATASETS, OPT, MODEL, DEVICE, epoch,
-                            CONFIG.display_iter, WRITER, WRITER_ITER)
-        pred, gt, imgs = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE,
-                                                   epoch, CONFIG.display_iter)
-        SCHEDULER.step()
-        res = eval_metrics(pred, gt, ['box', 'segm'])
-        print_evaluation(res)
-        logging.log_accuracies(WRITER, res, epoch)
+    transferlearning.train(DATASETS, OPT, MODEL, DEVICE, CONFIG, WRITER, SCHEDULER)
+    pred, gt, _ = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE,
+                                            CONFIG.max_epochs + 1,
+                                            CONFIG.display_iter)
+    res = eval_metrics(pred, gt, ['box', 'segm'])
+    print_evaluation(res)
+    logging.log_accuracies(WRITER, res, CONFIG.max_epochs + 1)
     WRITER.close()

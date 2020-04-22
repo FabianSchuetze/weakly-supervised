@@ -11,12 +11,14 @@ __C.momentum = 0.9
 
 __C.weight_decay = 0.0005
 
-__C.display_iter = 10
-
-__C.double_bias = True
+__C.display_iter = 50
 
 __C.gamma = 0.1
 
-__C.decay_step_size = 3
+__C.decay_step_size = 10
 
-__C.num_workers = 4
+__C.num_workers = 8
+
+__C.max_epochs = 10
+
+__C.val_iters = 50

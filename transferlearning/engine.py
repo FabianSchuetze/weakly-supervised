@@ -9,12 +9,14 @@ import numpy as np
 import torch
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
+import transferlearning
 from transferlearning import logging
 
 
 @torch.no_grad()
 def evaluate(model: torch.nn.Module, data: DataLoader,
-             device: torch.device, epoch: int, print_freq: int) -> None:
+             device: torch.device, epoch: int, print_freq: int,
+             n_iter: int = None) -> None:
     """Evaluates the model
 
     Parameters
@@ -41,6 +43,9 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
     all_targets, all_preds, all_images = [], [], []
     logger = get_logging(training=False)
     header = 'Epoch Val: [{}]'.format(epoch)
+    iters = 0
+    if not n_iter:
+        n_iter = len(data)
     for images, targets in logger.log_every(data, print_freq, header):
         all_images.append(images[0])
         all_targets.append(targets[0])
@@ -52,6 +57,9 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
         outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
         all_preds.append(outputs[0])
         logger.update(model_time=model_time)
+        if iters > n_iter:
+            break
+        iters += 1
     torch.set_num_threads(n_threads)
     return all_preds, all_targets, all_images
 
@@ -208,3 +216,19 @@ def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
     writer_iter = train_supervised([data_mask], optimizer, model, device, epoch,
                                    print_freq, writer, writer_iter)
     return writer_iter
+
+
+def train(datasets, optimizer, model, device, config, writer, scheduler)\
+        -> None:
+    """Does XYZ"""
+    writer_iter = 0
+    _train = train_transfer if config.weakly_supervised else train_supervised
+    for epoch in range(config.max_epochs):
+        writer_iter = _train(datasets, optimizer, model, device, epoch,
+                             config.display_iter, writer, writer_iter)
+        scheduler.step()
+        pred, gt, _ = evaluate(model, datasets[2], device, epoch,
+                               config.display_iter, config.val_iters)
+        res = transferlearning.eval_metrics(pred, gt, ['box', 'segm'])
+        transferlearning.print_evaluation(res)
+        logging.log_accuracies(writer, res, epoch)
