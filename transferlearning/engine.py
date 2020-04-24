@@ -229,6 +229,6 @@ def train(datasets, optimizer, model, device, config, writer, scheduler)\
         scheduler.step()
         pred, gt, _ = evaluate(model, datasets[2], device, epoch,
                                config.display_iter, config.val_iters)
-        res = transferlearning.eval_metrics(pred, gt, ['box', 'segm'])
+        res = transferlearning.eval_metrics(pred, gt, config.loss_types)
         transferlearning.print_evaluation(res)
         logging.log_accuracies(writer, res, epoch)

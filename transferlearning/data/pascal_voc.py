@@ -45,7 +45,7 @@ class PascalVOCDB:
         return [xmin, ymin, xmax, ymax]
 
     def _convert_targets(self, originals: Dict[str, str])\
-            -> Tuple[List[List[int]], List[int]]:
+            -> Tuple[List[List[int]], List[int], List[int]]:
         """
         Converst the targets from the Pascal VOC format into a lists
 
@@ -62,13 +62,15 @@ class PascalVOCDB:
         labels: List[int]
             The targets
         """
-        labels, boxes = [], []
+        labels, boxes, areas = [], [], []
         targets = originals['annotation']['object']
         targets = [targets] if isinstance(targets, dict) else targets
         for target in targets:
             labels.append(self._class_to_ind[target['name']])
-            boxes.append(self._get_box(target['bndbox']))
-        return boxes, labels
+            box = self._get_box(target['bndbox'])
+            boxes.append(box)
+            areas.append((box[3] - box[1]) * (box[2] - box[0]))
+        return boxes, labels, areas
 
     def _inadmissible_example(self, labels: List[int]):
         """If samples are occupied fully by one class the sample is deemed
@@ -77,21 +79,23 @@ class PascalVOCDB:
         return not labels
 
     def _to_dict(self, boxes: List[List[int]], labels: List[int],
-                 img_info: List[float]) ->Dict[str, torch.Tensor]:
+                 area: List[int], img_info: List[float])\
+                         ->Dict[str, torch.Tensor]:
         target = {}
         target['boxes'] = torch.as_tensor(boxes, dtype=torch.float32)
         target['img_info'] = torch.as_tensor(img_info, dtype=torch.float32)
         target['labels'] = torch.as_tensor(labels, dtype=torch.int64)
+        target['area'] = torch.as_tensor(area, dtype=torch.float32)
         return target
 
     def __getitem__(self, idx):
         """returns the image with index idx"""
         img, target = self._orig_pascal[idx]
-        boxes, labels = self._convert_targets(target)
+        boxes, labels, areas = self._convert_targets(target)
         if self._inadmissible_example(labels):
             return self.__getitem__(np.random.randint(0, self.__len__()))
         img_info = [img.height, img.width]
-        target = self._to_dict(boxes, labels, img_info)
+        target = self._to_dict(boxes, labels, areas, img_info)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target

@@ -5,7 +5,7 @@ from .agnostic_config import conf as agnostic_conf
 
 
 
-def conf(dataset_name: str, command_ling_args):
+def conf(dataset_name: str, command_ling_args=None):
     """Returns the configuration file"""
     config = agnostic_conf
     try:
@@ -17,7 +17,8 @@ def conf(dataset_name: str, command_ling_args):
         raise KeyError(message)
     for param in dataset:
         config[param] = dataset[param]
-    to_dict = command_ling_args.__dict__
-    for param in to_dict:
-        config[param] = to_dict[param]
+    if command_ling_args:
+        to_dict = command_ling_args.__dict__
+        for param in to_dict:
+            config[param] = to_dict[param]
     return config

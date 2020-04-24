@@ -77,7 +77,7 @@ def get_db(config):
         db = PascalVOCDB(config.root_folder, config.year,
                          transforms=transform(True))
         db_box = PascalVOCDB(config.root_folder, config.year,
-                         transforms=transform(True))
+                             transforms=transform(True))
         db_test = PascalVOCDB(config.root_folder, config.year,
                               transforms=transform(False))
     else:
@@ -91,12 +91,11 @@ if __name__ == "__main__":
     DEVICE = torch.device('cpu')
     if torch.cuda.is_available():
         DEVICE = torch.device('cuda')
+    if CONFIG.only_boxes:
+        CONFIG.weakly_supervised = False
     DBS = get_db(CONFIG)
-    # DB = VaihingenDataBase('data/vaihingen', get_transform(training=True))
-    # DB_BOX = VaihingenDataBase('data/vaihingen', get_transform(training=True))
-    # DB_TEST = VaihingenDataBase('data/vaihingen', get_transform(training=False))
     print_config(CONFIG)
-    DATASETS = train_test(DBS, [40, 1000, 500], CONFIG)
+    DATASETS = train_test(DBS, [500, 20, 500], CONFIG)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,
@@ -112,7 +111,7 @@ if __name__ == "__main__":
     WRITER = SummaryWriter()
     logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CONFIG.dataset)
     transferlearning.train(DATASETS, OPT, MODEL, DEVICE, CONFIG, WRITER, SCHEDULER)
-    pred, gt, _ = transferlearning.evaluate(MODEL, DATASETS[2], DEVICE,
+    pred, gt, _ = transferlearning.evaluate(MODEL, DATASETS[-1], DEVICE,
                                             CONFIG.max_epochs + 1,
                                             CONFIG.display_iter)
     res = eval_metrics(pred, gt, CONFIG.loss_types)
