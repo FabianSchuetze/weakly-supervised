@@ -15,8 +15,9 @@ def get_transform(training):
     return transferlearning.Compose(transforms)
 
 if __name__ == "__main__":
-    # dataset = VaihingenDataBase('data/vaihingen', get_transform(training=True))
-    dataset = PascalVOCDB('data/VOC2007', '2007',
+    # dataset = VaihingenDataBase('data/vaihingen', train=True,
+                                # transforms=get_transform(training=True))
+    dataset = PascalVOCDB('data/VOC2007', '2007', train=True,
             transforms=get_transform(training=False))
     # dataset = PennFudanDataset('data/PennFudanPed',
                                 # get_transform(training=False))

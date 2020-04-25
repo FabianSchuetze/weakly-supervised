@@ -8,6 +8,7 @@ import numpy as np
 from torchvision.datasets import VOCDetection
 import torch
 from transferlearning.transforms import Compose
+from .data_utils import shuffle_targets
 
 class PascalVOCDB:
     """The Pascal VOC DB"""
@@ -80,15 +81,14 @@ class PascalVOCDB:
         """
         return not labels
 
-    def _to_dict(self, boxes: List[List[int]], labels: List[int],
-                 area: List[int], img_info: List[float])\
-                         ->Dict[str, torch.Tensor]:
-        target = {}
-        target['boxes'] = torch.as_tensor(boxes, dtype=torch.float32)
-        target['img_info'] = torch.as_tensor(img_info, dtype=torch.float32)
-        target['labels'] = torch.as_tensor(labels, dtype=torch.int64)
-        target['area'] = torch.as_tensor(area, dtype=torch.float32)
-        return target
+    def _to_dict(self, target: Dict, idx: int) ->Dict[str, torch.Tensor]:
+        torch_target = {}
+        torch_target['boxes'] = torch.as_tensor(target['boxes'], dtype=torch.float32)
+        torch_target['img_info'] = torch.as_tensor(target['img_info'], dtype=torch.float32)
+        torch_target['labels'] = torch.as_tensor(target['labels'], dtype=torch.int64)
+        torch_target['area'] = torch.as_tensor(target['area'], dtype=torch.float32)
+        torch_target['image_id'] = torch.tensor([idx])
+        return torch_target
 
     def __getitem__(self, idx):
         """returns the image with index idx"""
@@ -97,9 +97,12 @@ class PascalVOCDB:
         if self._inadmissible_example(labels):
             return self.__getitem__(np.random.randint(0, self.__len__()))
         img_info = [img.height, img.width]
-        # if self._train:
-            # shuffle(boxes, labels, areas)
-        target = self._to_dict(boxes, labels, areas, img_info)
+        target['labels'] = labels
+        target['boxes'] = boxes
+        target['area'] = areas
+        target['img_info'] = img_info
+        target = shuffle_targets(target) if self._train else target
+        target = self._to_dict(target, idx)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target

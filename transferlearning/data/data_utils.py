@@ -111,3 +111,18 @@ def find_missing_files(search_dir: str, required_indices: List[int]) -> List[int
                 continue
     remaining = [i for i in required_indices if i not in existing]
     return remaining
+
+
+def shuffle_targets(targets):
+    """
+    Shuffles the targets
+    """
+    import pdb; pdb.set_trace()
+    indices = np.arange(len(targets['labels']))
+    np.random.shuffle(indices)
+    targets['labels'] = [targets['labels'][i] for i in indices]
+    targets['boxes'] = [targets['boxes'][i] for i in indices]
+    targets['area'] = [targets['area'][i] for i in indices]
+    if 'masks' in targets.keys():
+        targets['masks'] = [targets['masks'][i] for i in indices]
+    return targets

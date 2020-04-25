@@ -1,7 +1,6 @@
 r"""
-the pre-and post processing library
+the pre-and post processing library, copied from torchvision
 """
-# import random
 import math
 import torch
 from torch import nn, Tensor

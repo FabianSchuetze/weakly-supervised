@@ -10,7 +10,7 @@ from PIL import Image
 from scipy import ndimage
 from transferlearning.transforms import Compose
 from .data_utils import to_dict, extract_boxes, check_area, split_work,\
-        find_missing_files
+        find_missing_files, shuffle_targets
 
 
 class VaihingenDataBase:
@@ -238,8 +238,8 @@ class VaihingenDataBase:
             tmp = {}
             tmp['masks'] = masks
             tmp['labels'] = labels
-            tmp['bboxes'] = boxes
-            tmp['area'] = area
+            tmp['boxes'] = boxes.tolist()
+            tmp['area'] = area.tolist()
             tmp['im_info'] = img_info
             np.save(self._cache_path + '/' + str(idx) + '.npy', tmp)
 
@@ -279,9 +279,9 @@ class VaihingenDataBase:
         """
         img = self._crop_img(idx)
         target = self._read_target_cache(idx)
-        target = to_dict(target['masks'], target['bboxes'].tolist(),
-                         target['labels'], target['im_info'], idx,
-                         target['area'].tolist())
+        target = shuffle_targets(target) if self._train else target
+        target = to_dict(target['masks'], target['boxes'], target['labels'],
+                         target['im_info'], idx, target['area'])
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target
