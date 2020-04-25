@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import DataLoader, Subset
 import easydict
 import numpy as np
+import os
 
 
 def to_dict(masks: List, bboxes: List, labels: List, img_info: List,
@@ -101,3 +102,31 @@ def train_test(databases: List,
                                    num_workers=num_workers,
                                    collate_fn=collate_fn))
     return datasets
+
+
+def split(a, n):
+    k, m = divmod(len(a), n)
+    return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+
+
+def split_work(to_split: List, n_workers: int) -> List[List]:
+    splits = split(to_split, n_workers)
+    return [i for i in splits]
+
+
+def find_missing_files(search_dir, required_files) -> List[int]:
+    """
+    Fins the existing files and returns the elements that need to be
+    cached
+    """
+    # possible = [i for i in range(0, len(self._index))]
+    existing = []
+    for file in os.listdir(search_dir):
+        if os.path.isfile(os.path.join(search_dir, file)):
+            file = file.split('.')[0]
+            try:
+                existing.append(int(file))
+            except ValueError:
+                continue
+    remaining = [i for i in required_files if i not in existing]
+    return remaining

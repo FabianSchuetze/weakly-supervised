@@ -4,11 +4,13 @@ Uses the generate crops of size 200x200 and labels for the images
 import os
 from typing import List, Dict, Tuple, Optional
 import multiprocessing
+from multiprocessing import Process
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 from transferlearning.transforms import Compose
-from .data_utils import to_dict, extract_boxes, check_area
+from .data_utils import to_dict, extract_boxes, check_area, split_work,\
+        find_missing_files
 
 
 class VaihingenDataBase:
@@ -203,40 +205,31 @@ class VaihingenDataBase:
         no_labels = not labels
         return wrong_object or no_labels
 
-    #TODO: This is dangerous as the only check is existence of the folder
     def _maybe_pickle(self) -> None:
         """
         Pickels the targets to a local cache if the cache doesn't exist.
         """
-        if os.path.exists(self._cache_path):
-            return
-        os.makedirs(self._cache_path)
-        all_indices = [i for i in range(0, len(self._index))]
+        if not os.path.exists(self._cache_path):
+            os.makedirs(self._cache_path)
+        required_indices = [i for i in range(0, len(self._index))]
+        all_indices = find_missing_files(self._cache_path, required_indices)
         n_cpu = multiprocessing.cpu_count()
-        workload = [int(i * len(all_indices) / n_cpu) for i in range(n_cpu)]
-        workload.append(all_indices[-1])
-        processes = []
-        for lower, upper in zip(workload[:-1], workload[1:]):
-            proc = multiprocessing.Process(target=self._pickle_files,
-                                           args=(all_indices[lower:upper],))
-            processes.append(proc)
+        works = split_work(all_indices, n_cpu)
+        processes = [Process(target=self._pickle_files, args=(work,))
+                     for work in works]
         for p in processes:
             p.start()
         for p in processes:
             p.join()
 
-    def _pickle_files(self, indices: List[int]) ->None:
-        """"
-        Pickels the db to a chache file for faster loading in the future
-        """
-        print("Creates a cached db once for faster loading")
-        for idx in indices:
-            img, target = self._generate_crop(idx)
-            masks, labels = self._generate_targets(target)
-            if self._inadmissible_example(masks, labels):
-                print(str(idx) + ", inadmissible")
-                np.save(self._cache_path + '/' + str(idx) + '.npy', {})
-                continue
+    def _pickle_file(self, idx: int) ->None:
+        """Pickles the file with index idx to hdd"""
+        img, target = self._generate_crop(idx)
+        masks, labels = self._generate_targets(target)
+        if self._inadmissible_example(masks, labels):
+            print(str(idx) + ", inadmissible")
+            np.save(self._cache_path + '/' + str(idx) + '.npy', {})
+        else:
             boxes = extract_boxes(masks)
             area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
             img_info = [img.height, img.width]
@@ -248,16 +241,22 @@ class VaihingenDataBase:
             tmp['im_info'] = img_info
             np.save(self._cache_path + '/' + str(idx) + '.npy', tmp)
 
-    #TODO: Better errorchecking
+    def _pickle_files(self, work: List[int]) ->None:
+        """"
+        Pickels the db to a chache file for faster loading in the future
+        """
+        print("Creates a cached db once for faster loading")
+        for idx in work:
+            self._pickle_file(idx)
+
     def _read_target_cache(self, idx):
         """Reads the pickeld target from disk"""
+        # try:
         res = np.load(self._cache_path + '/' + str(idx) + '.npy',
                       allow_pickle=True)[()]
         if res:
             return res
         return self._read_target_cache(np.random.randint(0, len(self._index)))
-        # except:
-            # print("could not find the file, is the db pickeled correcty?")
 
     def __getitem__(self, idx: int) ->Tuple:
         """
@@ -277,16 +276,7 @@ class VaihingenDataBase:
             All required training targets
         """
         img = self._crop_img(idx)
-        # img, target = self._generate_crop(idx)
-        # masks, labels = self._generate_targets(target)
-        # if self._inadmissible_example(masks, labels):
-            # return self.__getitem__(np.random.randint(0, len(self._index)))
-        # bboxes = extract_boxes(masks)
-        # area = (bboxes[:, 3] - bboxes[:, 1]) * (bboxes[:, 2] - bboxes[:, 0])
-        # img_info = [img.height, img.width]
         target = self._read_target_cache(idx)
-        # target = to_dict(masks, bboxes.tolist(), labels, img_info, idx,
-                         # area.tolist())
         target = to_dict(target['masks'], target['bboxes'].tolist(),
                          target['labels'], target['im_info'], idx,
                          target['area'].tolist())
