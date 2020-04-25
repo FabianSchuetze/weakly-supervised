@@ -11,7 +11,7 @@ __C.momentum = 0.9
 
 __C.weight_decay = 0.0005
 
-__C.display_iter = 50
+__C.display_iter = 100
 
 __C.gamma = 0.1
 

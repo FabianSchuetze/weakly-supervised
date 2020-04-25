@@ -181,6 +181,10 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
     header = 'Epoch: [{}]'.format(epoch)
     lr_scheduler = learning_rate_scheduler(optimizer, epoch, len(data))
     for images, targets in logger.log_every(data, print_freq, header):
+        ##ids = [t['image_id'].item() for t in targets]
+        ##if ids[0] == ids[1]:
+        ##    import pdb; pdb.set_trace()
+        ##print("THe ids are %s" %(ids)) 
         optimizer.zero_grad()
         images = list(i.to(device) for i in images)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -238,7 +242,7 @@ def train(datasets, optimizer, model, device, config, writer, scheduler)\
         writer_iter = _train(datasets, optimizer, model, device, epoch,
                              config.display_iter, writer, writer_iter)
         scheduler.step()
-        pred, gt, _ = evaluate(model, datasets[2], device, epoch,
+        pred, gt, _ = evaluate(model, datasets[-1], device, epoch,
                                config.display_iter, config.val_iters)
         res = transferlearning.eval_metrics(pred, gt, config.loss_types)
         transferlearning.print_evaluation(res)

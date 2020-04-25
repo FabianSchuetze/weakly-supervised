@@ -95,6 +95,7 @@ class PascalVOCDB:
         img, target = self._orig_pascal[idx]
         boxes, labels, areas = self._convert_targets(target)
         if self._inadmissible_example(labels):
+            print("Idex %i is not admissible " %(idx))
             return self.__getitem__(np.random.randint(0, self.__len__()))
         img_info = [img.height, img.width]
         target['labels'] = labels

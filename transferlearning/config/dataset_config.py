@@ -44,7 +44,8 @@ __C.Coco.loss_types = ['box', 'segm']
 __C.Pascal = EasyDict()
 
 __C.Pascal.mean = [0.445, 0.456, 0.3862]
-__C.Pascal.std = [0.2405, 0.2315, 0.2303]
+## __C.Pascal.std = [0.2405, 0.2315, 0.2303]
+__C.Pascal.std = [1., 1., 1.]
 __C.Pascal.num_classes = 20
 __C.Pascal.min_size = 600
 __C.Pascal.max_size = 1000
@@ -53,3 +54,4 @@ __C.Pascal.loss_types = ['box']
 __C.Pascal.root_folder = 'data/VOC2007'
 __C.Pascal.year = '2007'
 __C.Pascal.scales = [600]
+__C.Pascal.learning_rate = 0.001
