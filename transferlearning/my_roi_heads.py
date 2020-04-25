@@ -1,5 +1,5 @@
 r"""
-Contains the code for the bounding box, and instance segmentation. Originally 
+Contains the code for the bounding box, and instance segmentation. Originally
 specified by torchvision. Modified to account to weakly-suervised transfer
 learning.
 """
@@ -113,7 +113,12 @@ def project_masks_on_boxes(gt_masks, boxes, matched_idxs, M):
     return roi_align(gt_masks, rois, (M, M), 1.)[:, 0]
 
 
-def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs):
+def maskrcnn_loss(
+        mask_logits,
+        proposals,
+        gt_masks,
+        gt_labels,
+        mask_matched_idxs):
     # type: (Tensor, List[Tensor], List[Tensor], List[Tensor], List[Tensor])
     """
     Arguments:
@@ -140,9 +145,8 @@ def maskrcnn_loss(mask_logits, proposals, gt_masks, gt_labels, mask_matched_idxs
     if mask_targets.numel() == 0:
         return mask_logits.sum() * 0
 
-    mask_loss = F.binary_cross_entropy_with_logits(
-        mask_logits[torch.arange(labels.shape[0], device=labels.device), labels], mask_targets
-    )
+    mask_loss = F.binary_cross_entropy_with_logits(mask_logits[torch.arange(
+        labels.shape[0], device=labels.device), labels], mask_targets)
     return mask_loss
 
 
@@ -190,7 +194,12 @@ def _onnx_heatmaps_to_keypoints(maps, maps_i, roi_map_width, roi_map_height,
     height_correction = heights_i / roi_map_height
 
     roi_map = torch.nn.functional.interpolate(
-        maps_i[None], size=(int(roi_map_height), int(roi_map_width)), mode='bicubic', align_corners=False)[0]
+        maps_i[None],
+        size=(
+            int(roi_map_height),
+            int(roi_map_width)),
+        mode='bicubic',
+        align_corners=False)[0]
 
     w = torch.scalar_tensor(roi_map.size(2), dtype=torch.int64)
     pos = roi_map.reshape(num_keypoints, -1).argmax(dim=1)
@@ -198,10 +207,10 @@ def _onnx_heatmaps_to_keypoints(maps, maps_i, roi_map_width, roi_map_height,
     x_int = (pos % w)
     y_int = ((pos - x_int) / w)
 
-    x = (torch.tensor(0.5, dtype=torch.float32) + x_int.to(dtype=torch.float32)) * \
-        width_correction.to(dtype=torch.float32)
-    y = (torch.tensor(0.5, dtype=torch.float32) + y_int.to(dtype=torch.float32)) * \
-        height_correction.to(dtype=torch.float32)
+    x = (torch.tensor(0.5, dtype=torch.float32) +
+         x_int.to(dtype=torch.float32)) * width_correction.to(dtype=torch.float32)
+    y = (torch.tensor(0.5, dtype=torch.float32) + y_int.to(dtype=torch.float32)
+         ) * height_correction.to(dtype=torch.float32)
 
     xy_preds_i_0 = x + offset_x_i.to(dtype=torch.float32)
     xy_preds_i_1 = y + offset_y_i.to(dtype=torch.float32)
@@ -217,20 +226,34 @@ def _onnx_heatmaps_to_keypoints(maps, maps_i, roi_map_width, roi_map_height,
 
 
 @torch.jit.script
-def _onnx_heatmaps_to_keypoints_loop(maps, rois, widths_ceil, heights_ceil,
-                                     widths, heights, offset_x, offset_y, num_keypoints):
-    xy_preds = torch.zeros((0, 3, int(num_keypoints)), dtype=torch.float32, device=maps.device)
-    end_scores = torch.zeros((0, int(num_keypoints)), dtype=torch.float32, device=maps.device)
+def _onnx_heatmaps_to_keypoints_loop(
+        maps,
+        rois,
+        widths_ceil,
+        heights_ceil,
+        widths,
+        heights,
+        offset_x,
+        offset_y,
+        num_keypoints):
+    xy_preds = torch.zeros((0, 3, int(num_keypoints)),
+                           dtype=torch.float32, device=maps.device)
+    end_scores = torch.zeros((0, int(num_keypoints)),
+                             dtype=torch.float32, device=maps.device)
 
     for i in range(int(rois.size(0))):
         xy_preds_i, end_scores_i = _onnx_heatmaps_to_keypoints(maps, maps[i],
                                                                widths_ceil[i], heights_ceil[i],
                                                                widths[i], heights[i],
                                                                offset_x[i], offset_y[i])
-        xy_preds = torch.cat((xy_preds.to(dtype=torch.float32),
-                              xy_preds_i.unsqueeze(0).to(dtype=torch.float32)), 0)
-        end_scores = torch.cat((end_scores.to(dtype=torch.float32),
-                                end_scores_i.to(dtype=torch.float32).unsqueeze(0)), 0)
+        xy_preds = torch.cat(
+            (xy_preds.to(
+                dtype=torch.float32), xy_preds_i.unsqueeze(0).to(
+                dtype=torch.float32)), 0)
+        end_scores = torch.cat(
+            (end_scores.to(
+                dtype=torch.float32), end_scores_i.to(
+                dtype=torch.float32).unsqueeze(0)), 0)
     return xy_preds, end_scores
 
 
@@ -268,21 +291,30 @@ def heatmaps_to_keypoints(maps, rois):
     num_keypoints = maps.shape[1]
 
     if torchvision._is_tracing():
-        xy_preds, end_scores = _onnx_heatmaps_to_keypoints_loop(maps, rois,
-                                                                widths_ceil, heights_ceil, widths, heights,
-                                                                offset_x, offset_y,
-                                                                torch.scalar_tensor(num_keypoints, dtype=torch.int64))
+        xy_preds, end_scores = _onnx_heatmaps_to_keypoints_loop(
+            maps, rois, widths_ceil, heights_ceil, widths, heights, offset_x, offset_y, torch.scalar_tensor(
+                num_keypoints, dtype=torch.int64))
         return xy_preds.permute(0, 2, 1), end_scores
 
-    xy_preds = torch.zeros((len(rois), 3, num_keypoints), dtype=torch.float32, device=maps.device)
-    end_scores = torch.zeros((len(rois), num_keypoints), dtype=torch.float32, device=maps.device)
+    xy_preds = torch.zeros((len(rois), 3, num_keypoints),
+                           dtype=torch.float32, device=maps.device)
+    end_scores = torch.zeros(
+        (len(rois),
+         num_keypoints),
+        dtype=torch.float32,
+        device=maps.device)
     for i in range(len(rois)):
         roi_map_width = int(widths_ceil[i].item())
         roi_map_height = int(heights_ceil[i].item())
         width_correction = widths[i] / roi_map_width
         height_correction = heights[i] / roi_map_height
         roi_map = torch.nn.functional.interpolate(
-            maps[i][None], size=(roi_map_height, roi_map_width), mode='bicubic', align_corners=False)[0]
+            maps[i][None],
+            size=(
+                roi_map_height,
+                roi_map_width),
+            mode='bicubic',
+            align_corners=False)[0]
         # roi_map_probs = scores_to_probs(roi_map.copy())
         w = roi_map.shape[2]
         pos = roi_map.reshape(num_keypoints, -1).argmax(dim=1)
@@ -301,14 +333,19 @@ def heatmaps_to_keypoints(maps, rois):
     return xy_preds.permute(0, 2, 1), end_scores
 
 
-def keypointrcnn_loss(keypoint_logits, proposals, gt_keypoints, keypoint_matched_idxs):
+def keypointrcnn_loss(
+        keypoint_logits,
+        proposals,
+        gt_keypoints,
+        keypoint_matched_idxs):
     # type: (Tensor, List[Tensor], List[Tensor], List[Tensor])
     N, K, H, W = keypoint_logits.shape
     assert H == W
     discretization_size = H
     heatmaps = []
     valid = []
-    for proposals_per_image, gt_kp_in_image, midx in zip(proposals, gt_keypoints, keypoint_matched_idxs):
+    for proposals_per_image, gt_kp_in_image, midx in zip(
+            proposals, gt_keypoints, keypoint_matched_idxs):
         kp = gt_kp_in_image[midx]
         heatmaps_per_image, valid_per_image = keypoints_to_heatmap(
             kp, proposals_per_image, discretization_size
@@ -327,7 +364,9 @@ def keypointrcnn_loss(keypoint_logits, proposals, gt_keypoints, keypoint_matched
 
     keypoint_logits = keypoint_logits.view(N * K, H * W)
 
-    keypoint_loss = F.cross_entropy(keypoint_logits[valid], keypoint_targets[valid])
+    keypoint_loss = F.cross_entropy(
+        keypoint_logits[valid],
+        keypoint_targets[valid])
     return keypoint_loss
 
 
@@ -367,7 +406,8 @@ def _onnx_expand_boxes(boxes, scale):
     boxes_exp1 = y_c - h_half
     boxes_exp2 = x_c + w_half
     boxes_exp3 = y_c + h_half
-    boxes_exp = torch.stack((boxes_exp0, boxes_exp1, boxes_exp2, boxes_exp3), 1)
+    boxes_exp = torch.stack(
+        (boxes_exp0, boxes_exp1, boxes_exp2, boxes_exp3), 1)
     return boxes_exp
 
 
@@ -397,7 +437,8 @@ def expand_boxes(boxes, scale):
 @torch.jit.unused
 def expand_masks_tracing_scale(M, padding):
     # type: (int, int) -> float
-    return torch.tensor(M + 2 * padding).to(torch.float32) / torch.tensor(M).to(torch.float32)
+    return torch.tensor(M + 2 * padding).to(torch.float32) / \
+        torch.tensor(M).to(torch.float32)
 
 
 def expand_masks(mask, padding):
@@ -423,7 +464,8 @@ def paste_mask_in_image(mask, box, im_h, im_w):
     mask = mask.expand((1, 1, -1, -1))
 
     # Resize mask
-    mask = misc_nn_ops.interpolate(mask, size=(h, w), mode='bilinear', align_corners=False)
+    mask = misc_nn_ops.interpolate(mask, size=(
+        h, w), mode='bilinear', align_corners=False)
     mask = mask[0][0]
 
     im_mask = torch.zeros((im_h, im_w), dtype=mask.dtype, device=mask.device)
@@ -451,7 +493,8 @@ def _onnx_paste_mask_in_image(mask, box, im_h, im_w):
     mask = mask.expand((1, 1, mask.size(0), mask.size(1)))
 
     # Resize mask
-    mask = torch.nn.functional.interpolate(mask, size=(int(h), int(w)), mode='bilinear', align_corners=False)
+    mask = torch.nn.functional.interpolate(mask, size=(
+        int(h), int(w)), mode='bilinear', align_corners=False)
     mask = mask[0][0]
 
     x_0 = torch.max(torch.cat((box[0].unsqueeze(0), zero)))
@@ -496,9 +539,11 @@ def paste_masks_in_image(masks, boxes, img_shape, padding=1):
     im_h, im_w = img_shape
 
     if torchvision._is_tracing():
-        return _onnx_paste_masks_in_image_loop(masks, boxes,
-                                               torch.scalar_tensor(im_h, dtype=torch.int64),
-                                               torch.scalar_tensor(im_w, dtype=torch.int64))[:, None]
+        return _onnx_paste_masks_in_image_loop(
+            masks, boxes, torch.scalar_tensor(
+                im_h, dtype=torch.int64), torch.scalar_tensor(
+                im_w, dtype=torch.int64))[
+            :, None]
     res = [
         paste_mask_in_image(m[0], b, im_h, im_w)
         for m, b in zip(masks, boxes)
@@ -601,9 +646,12 @@ class RoIHeads(torch.nn.Module):
         # type: (List[Tensor], List[Tensor], List[Tensor])
         matched_idxs = []
         labels = []
-        for proposals_in_image, gt_boxes_in_image, gt_labels_in_image in zip(proposals, gt_boxes, gt_labels):
-            #  set to self.box_similarity when https://github.com/pytorch/pytorch/issues/27495 lands
-            match_quality_matrix = box_ops.box_iou(gt_boxes_in_image, proposals_in_image)
+        for proposals_in_image, gt_boxes_in_image, gt_labels_in_image in zip(
+                proposals, gt_boxes, gt_labels):
+            # set to self.box_similarity when
+            # https://github.com/pytorch/pytorch/issues/27495 lands
+            match_quality_matrix = box_ops.box_iou(
+                gt_boxes_in_image, proposals_in_image)
             matched_idxs_in_image = self.proposal_matcher(match_quality_matrix)
 
             clamped_matched_idxs_in_image = matched_idxs_in_image.clamp(min=0)
@@ -617,7 +665,8 @@ class RoIHeads(torch.nn.Module):
 
             # Label ignore proposals (between low and high thresholds)
             ignore_inds = matched_idxs_in_image == self.proposal_matcher.BETWEEN_THRESHOLDS
-            labels_in_image[ignore_inds] = torch.tensor(-1)  # -1 is ignored by sampler
+            # -1 is ignored by sampler
+            labels_in_image[ignore_inds] = torch.tensor(-1)
 
             matched_idxs.append(clamped_matched_idxs_in_image)
             labels.append(labels_in_image)
@@ -630,7 +679,8 @@ class RoIHeads(torch.nn.Module):
         for img_idx, (pos_inds_img, neg_inds_img) in enumerate(
             zip(sampled_pos_inds, sampled_neg_inds)
         ):
-            img_sampled_inds = torch.nonzero(pos_inds_img | neg_inds_img).squeeze(1)
+            img_sampled_inds = torch.nonzero(
+                pos_inds_img | neg_inds_img).squeeze(1)
             sampled_inds.append(img_sampled_inds)
         return sampled_inds
 
@@ -670,7 +720,8 @@ class RoIHeads(torch.nn.Module):
         proposals = self.add_gt_proposals(proposals, gt_boxes)
 
         # get matching gt indices for each proposal
-        matched_idxs, labels = self.assign_targets_to_proposals(proposals, gt_boxes, gt_labels)
+        matched_idxs, labels = self.assign_targets_to_proposals(
+            proposals, gt_boxes, gt_labels)
         # sample a fixed proportion of positive-negative proposals
         sampled_inds = self.subsample(labels)
         matched_gt_boxes = []
@@ -685,7 +736,12 @@ class RoIHeads(torch.nn.Module):
         regression_targets = self.box_coder.encode(matched_gt_boxes, proposals)
         return proposals, matched_idxs, labels, regression_targets
 
-    def postprocess_detections(self, class_logits, box_regression, proposals, image_shapes):
+    def postprocess_detections(
+            self,
+            class_logits,
+            box_regression,
+            proposals,
+            image_shapes):
         # type: (Tensor, Tensor, List[Tensor], List[Tuple[int, int]])
         device = class_logits.device
         num_classes = class_logits.shape[-1]
@@ -708,7 +764,8 @@ class RoIHeads(torch.nn.Module):
         all_boxes = []
         all_scores = []
         all_labels = []
-        for boxes, scores, image_shape in zip(pred_boxes_list, pred_scores_list, image_shapes):
+        for boxes, scores, image_shape in zip(
+                pred_boxes_list, pred_scores_list, image_shapes):
             boxes = box_ops.clip_boxes_to_image(boxes, image_shape)
 
             # create labels for each prediction
@@ -720,7 +777,8 @@ class RoIHeads(torch.nn.Module):
             scores = scores[:, 1:]
             labels = labels[:, 1:]
 
-            # batch everything, by making every class prediction be a separate instance
+            # batch everything, by making every class prediction be a separate
+            # instance
             boxes = boxes.reshape(-1, 4)
             scores = scores.reshape(-1)
             labels = labels.reshape(-1)
@@ -763,7 +821,7 @@ class RoIHeads(torch.nn.Module):
 
         if self.training:
             proposals, matched_idxs, labels, regression_targets = \
-                    self.select_training_samples(proposals, targets)
+                self.select_training_samples(proposals, targets)
         else:
             labels = None
             regression_targets = None
@@ -785,7 +843,8 @@ class RoIHeads(torch.nn.Module):
                 "loss_box_reg": loss_box_reg
             }
         else:
-            boxes, scores, labels = self.postprocess_detections(class_logits, box_regression, proposals, image_shapes)
+            boxes, scores, labels = self.postprocess_detections(
+                class_logits, box_regression, proposals, image_shapes)
             num_images = len(boxes)
             for i in range(num_images):
                 result.append(
@@ -813,12 +872,14 @@ class RoIHeads(torch.nn.Module):
 
             if self.mask_roi_pool is not None:
                 # import pdb; pdb.set_trace()
-                mask_features = self.mask_roi_pool(features, mask_proposals, image_shapes)
+                mask_features = self.mask_roi_pool(
+                    features, mask_proposals, image_shapes)
                 mask_features = self.mask_head(mask_features)
                 if self.transfer:
                     weights = self.transfer(
                         self.box_predictor.state_dict()['_bbox_pred.weight'])
-                    mask_logits = self.weakly_supervised(mask_features, weights)
+                    mask_logits = self.weakly_supervised(
+                        mask_features, weights)
                 else:
                     mask_logits = self.mask_predictor(mask_features)
             else:
@@ -850,20 +911,20 @@ class RoIHeads(torch.nn.Module):
         # keep none checks in if conditional so torchscript will conditionally
         # compile each branch
         # if self.keypoint_roi_pool is not None and self.keypoint_head is not None \
-                # and self.keypoint_predictor is not None:
+            # and self.keypoint_predictor is not None:
             # keypoint_proposals = [p["boxes"] for p in result]
             # if self.training:
-                # # during training, only focus on positive boxes
-                # num_images = len(proposals)
-                # keypoint_proposals = []
-                # pos_matched_idxs = []
-                # assert matched_idxs is not None
-                # for img_id in range(num_images):
-                    # pos = torch.nonzero(labels[img_id] > 0).squeeze(1)
-                    # keypoint_proposals.append(proposals[img_id][pos])
-                    # pos_matched_idxs.append(matched_idxs[img_id][pos])
+            # # during training, only focus on positive boxes
+            # num_images = len(proposals)
+            # keypoint_proposals = []
+            # pos_matched_idxs = []
+            # assert matched_idxs is not None
+            # for img_id in range(num_images):
+            # pos = torch.nonzero(labels[img_id] > 0).squeeze(1)
+            # keypoint_proposals.append(proposals[img_id][pos])
+            # pos_matched_idxs.append(matched_idxs[img_id][pos])
             # else:
-                # pos_matched_idxs = None
+            # pos_matched_idxs = None
 
             # keypoint_features = self.keypoint_roi_pool(features, keypoint_proposals, image_shapes)
             # keypoint_features = self.keypoint_head(keypoint_features)
@@ -871,24 +932,24 @@ class RoIHeads(torch.nn.Module):
 
             # loss_keypoint = {}
             # if self.training:
-                # assert targets is not None
-                # assert pos_matched_idxs is not None
+            # assert targets is not None
+            # assert pos_matched_idxs is not None
 
-                # gt_keypoints = [t["keypoints"] for t in targets]
-                # rcnn_loss_keypoint = keypointrcnn_loss(
-                    # keypoint_logits, keypoint_proposals,
-                    # gt_keypoints, pos_matched_idxs)
-                # loss_keypoint = {
-                    # "loss_keypoint": rcnn_loss_keypoint
-                # }
+            # gt_keypoints = [t["keypoints"] for t in targets]
+            # rcnn_loss_keypoint = keypointrcnn_loss(
+            # keypoint_logits, keypoint_proposals,
+            # gt_keypoints, pos_matched_idxs)
+            # loss_keypoint = {
+            # "loss_keypoint": rcnn_loss_keypoint
+            # }
             # else:
-                # assert keypoint_logits is not None
-                # assert keypoint_proposals is not None
+            # assert keypoint_logits is not None
+            # assert keypoint_proposals is not None
 
-                # keypoints_probs, kp_scores = keypointrcnn_inference(keypoint_logits, keypoint_proposals)
-                # for keypoint_prob, kps, r in zip(keypoints_probs, kp_scores, result):
-                    # r["keypoints"] = keypoint_prob
-                    # r["keypoints_scores"] = kps
+            # keypoints_probs, kp_scores = keypointrcnn_inference(keypoint_logits, keypoint_proposals)
+            # for keypoint_prob, kps, r in zip(keypoints_probs, kp_scores, result):
+            # r["keypoints"] = keypoint_prob
+            # r["keypoints_scores"] = kps
 
             # losses.update(loss_keypoint)
 

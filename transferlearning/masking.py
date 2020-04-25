@@ -4,6 +4,8 @@ Defines the mask heads
 import torch
 
 # TODO: Class agnostic is when out_features = 1
+
+
 class SupervisedMask(torch.nn.Module):
     """ the convtional mask"""
 
@@ -36,6 +38,7 @@ class WeaklySupervised(torch.nn.Module):
         out = self._model(features)
         weights = weights.view(self._n_classes, self._dim, 1, 1)
         return torch.nn.functional.conv2d(out, weights)
+
 
 class TransferFunction(torch.nn.Module):
     """The transfer function from the paper"""

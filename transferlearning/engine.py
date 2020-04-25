@@ -54,7 +54,8 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
         model_time = time.time()
         outputs = model(images)
         model_time = time.time() - model_time
-        outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
+        outputs = [{k: v.to(cpu_device) for k, v in t.items()}
+                   for t in outputs]
         all_preds.append(outputs[0])
         logger.update(model_time=model_time)
         if iters > n_iter:
@@ -74,8 +75,8 @@ def check_losses(losses: float, loss_dict: Dict, target) -> None:
         for key in loss_dict:
             rounded = np.round(loss_dict[key].item(), 2)
             print(key + ': ' + str(rounded))
-        print("The error occured with sample id: %s"\
-              %(str(target[0]['image_id'])))
+        print("The error occured with sample id: %s"
+              % (str(target[0]['image_id'])))
         sys.exit(1)
 
 
@@ -197,6 +198,7 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
         writer_iter += 1
     return writer_iter
 
+
 def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
                    model: torch.nn.Module, device: torch.device,
                    epoch: int, print_freq: int,
@@ -213,14 +215,23 @@ def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
     writer_iter = train_supervised([data_box], optimizer, model, device,
                                    epoch, print_freq, writer, writer_iter)
     model._heads.train_mask = True
-    writer_iter = train_supervised([data_mask], optimizer, model, device, epoch,
-                                   print_freq, writer, writer_iter)
+    writer_iter = train_supervised(
+        [data_mask],
+        optimizer,
+        model,
+        device,
+        epoch,
+        print_freq,
+        writer,
+        writer_iter)
     return writer_iter
 
 
 def train(datasets, optimizer, model, device, config, writer, scheduler)\
         -> None:
     """Does XYZ"""
+    # import pdb
+    # pdb.set_trace()
     writer_iter = 0
     _train = train_transfer if config.weakly_supervised else train_supervised
     for epoch in range(config.max_epochs):

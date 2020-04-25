@@ -117,7 +117,6 @@ def shuffle_targets(targets):
     """
     Shuffles the targets
     """
-    import pdb; pdb.set_trace()
     indices = np.arange(len(targets['labels']))
     np.random.shuffle(indices)
     targets['labels'] = [targets['labels'][i] for i in indices]

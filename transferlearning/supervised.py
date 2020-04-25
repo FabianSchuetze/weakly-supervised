@@ -139,18 +139,33 @@ class Supervised(torch.nn.Module):
                 mask_predictor=mask_predictor)
         return roi_heads
 
+    def train(self, mode=True):
+        self._backbone.train()
+        self._rpn.train()
+        self._heads.train()
+        self._processing.train()
+
+    def eval(self):
+        self._backbone.eval()
+        self._rpn.eval()
+        self._heads.eval()
+        self._processing.eval()
+
     def forward(self, images: List[torch.Tensor],
                 targets: Optional[List[Dict]] = [None]):
         """The forward propagation"""
-        if self.training:
-            self._backbone.train()
-            self._rpn.train()
-            self._heads.train()
-        else:
-            self._backbone.eval()
-            self._rpn.eval()
-            self._heads.eval()
         orig_sizes = [(i.shape[1], i.shape[2]) for i in images]
+        # import pdb;pdb.set_trace()
+        # if self.training:
+            # self._backbone.train()
+            # self._rpn.train()
+            # self._heads.train()
+            # self._processing.train()
+        # else:
+            # self._backbone.eval()
+            # self._rpn.eval()
+            # self._heads.eval()
+            # self._processing.eval()
         images, targets = self._processing(images, targets)
         targets = targets if targets[0] else None
         # import pdb; pdb.set_trace()
@@ -162,7 +177,6 @@ class Supervised(torch.nn.Module):
             return loss_dict
         res = self._processing.postprocess(res, images.image_sizes, orig_sizes)
         return res
-
 
     def __str__(self):
         architecture = "Weakly Supervised: " + str(self._weakly_supervised)

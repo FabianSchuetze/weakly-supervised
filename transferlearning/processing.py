@@ -37,6 +37,8 @@ class Processing(nn.Module):
     def forward(self, images, targets=None):
         # # type: (List[Tensor], Optional[List[Dict[str, Tensor]]])
         images = [img for img in images]
+        # import pdb
+        # pdb.set_trace()
         for idx, img in enumerate(images):
             target_index = targets[0] if targets is not None else None
             img = self.normalize(img)
@@ -50,8 +52,8 @@ class Processing(nn.Module):
         images = self.batch_images(images)
         # image_sizes_list = torch.jit.annotate(List[Tuple[int, int]], [])
         # for image_size in image_sizes:
-            # assert len(image_size) == 2
-            # image_sizes_list.append((image_size[0], image_size[1]))
+        # assert len(image_size) == 2
+        # image_sizes_list.append((image_size[0], image_size[1]))
         image_list = ImageList(images, image_sizes)
         return image_list, targets
 
@@ -73,20 +75,26 @@ class Processing(nn.Module):
 
     def resize(self, image, target):
         # type: (Tensor, Optional[Dict[str, Tensor]])
+        # import pdb; pdb.set_trace()
         h, w = image.shape[-2:]
         im_shape = torch.tensor(image.shape[-2:])
         min_size = float(torch.min(im_shape))
         max_size = float(torch.max(im_shape))
         if self.training:
             size = float(self.torch_choice(self.min_size))
+            scale_factor = size / min_size
         else:
+            scale_factor = 1
             # FIXME assume for now that testing uses the largest scale
-            size = float(self.min_size[-1])
-        scale_factor = size / min_size
+            # size = float(self.min_size[-1])
+        # scale_factor = size / min_size
         if max_size * scale_factor > self.max_size:
             scale_factor = self.max_size / max_size
         image = torch.nn.functional.interpolate(
-            image[None], scale_factor=scale_factor, mode='bilinear', align_corners=False)[0]
+            image[None],
+            scale_factor=scale_factor,
+            mode='bilinear',
+            align_corners=False)[0]
 
         if target is None:
             return image, target
@@ -97,7 +105,8 @@ class Processing(nn.Module):
 
         if "masks" in target:
             mask = target["masks"]
-            mask = misc_nn_ops.interpolate(mask[None].float(), scale_factor=scale_factor)[0].byte()
+            mask = misc_nn_ops.interpolate(
+                mask[None].float(), scale_factor=scale_factor)[0].byte()
             target["masks"] = mask
         return image, target
 
@@ -108,11 +117,24 @@ class Processing(nn.Module):
         # type: (List[Tensor], int) -> Tensor
         max_size = []
         for i in range(images[0].dim()):
-            max_size_i = torch.max(torch.stack([img.shape[i] for img in images]).to(torch.float32)).to(torch.int64)
+            max_size_i = torch.max(torch.stack(
+                [img.shape[i] for img in images]).to(torch.float32)).to(torch.int64)
             max_size.append(max_size_i)
         stride = size_divisible
-        max_size[1] = (torch.ceil((max_size[1].to(torch.float32)) / stride) * stride).to(torch.int64)
-        max_size[2] = (torch.ceil((max_size[2].to(torch.float32)) / stride) * stride).to(torch.int64)
+        max_size[1] = (
+            torch.ceil(
+                (max_size[1].to(
+                    torch.float32)) /
+                stride) *
+            stride).to(
+                torch.int64)
+        max_size[2] = (
+            torch.ceil(
+                (max_size[2].to(
+                    torch.float32)) /
+                stride) *
+            stride).to(
+                torch.int64)
         max_size = tuple(max_size)
 
         # work around for
@@ -121,7 +143,8 @@ class Processing(nn.Module):
         padded_imgs = []
         for img in images:
             padding = [(s1 - s2) for s1, s2 in zip(max_size, tuple(img.shape))]
-            padded_img = torch.nn.functional.pad(img, (0, padding[2], 0, padding[1], 0, padding[0]))
+            padded_img = torch.nn.functional.pad(
+                img, (0, padding[2], 0, padding[1], 0, padding[0]))
             padded_imgs.append(padded_img)
 
         return torch.stack(padded_imgs)
@@ -157,7 +180,8 @@ class Processing(nn.Module):
     def postprocess(self, result, image_shapes, original_image_sizes):
         # type: (List[Dict[str, Tensor]], List[Tuple[int, int]], List[Tuple[int, int]])
         # import pdb; pdb.set_trace()
-        for i, (pred, im_s, o_im_s) in enumerate(zip(result, image_shapes, original_image_sizes)):
+        for i, (pred, im_s, o_im_s) in enumerate(
+                zip(result, image_shapes, original_image_sizes)):
             boxes = pred["boxes"]
             boxes = resize_boxes(boxes, im_s, o_im_s)
             result[i]["boxes"] = boxes
@@ -170,7 +194,8 @@ class Processing(nn.Module):
 
 def resize_boxes(boxes, original_size, new_size):
     # type: (Tensor, List[int], List[int])
-    ratios = [float(s) / float(s_orig) for s, s_orig in zip(new_size, original_size)]
+    ratios = [float(s) / float(s_orig)
+              for s, s_orig in zip(new_size, original_size)]
     ratio_height, ratio_width = ratios
     xmin, ymin, xmax, ymax = boxes.unbind(1)
 

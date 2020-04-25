@@ -13,10 +13,12 @@ def _convert_box(pred_box: torch.Tensor):
     box = np.array(pred_box)
     return box[:, [1, 0, 3, 2]]
 
+
 def _convert_mask(mask: torch.Tensor, threshold=0.5):
     """Converts mask to a form that can be used by cocoeval"""
     mask = np.array(mask.squeeze(1)) if mask.dim() == 4 else np.array(mask)
     return mask > threshold
+
 
 def eval_boxes(predictions: List[Dict], gts: List[Dict]) -> Dict:
     """Returns the coco evaluation metric for box detection.
@@ -113,7 +115,7 @@ def eval_metrics(predictions: List[Dict], gts: List[Dict], metrics: List[str])\
     """
     # import pdb; pdb.set_trace()
     results = {}
-    if  'segm' in metrics:
+    if 'segm' in metrics:
         tmp = eval_masks(predictions, gts)
         results['segm'] = tmp
     if 'box' in metrics:
@@ -127,7 +129,7 @@ def print_evaluation(metrics) -> None:
     Prints the evaluation received from above
     """
     for key in metrics:
-        print("The metrics for %s are:" %(key))
+        print("The metrics for %s are:" % (key))
         out = metrics[key]['coco_eval'].__str__()
         print(out)
     print("")
