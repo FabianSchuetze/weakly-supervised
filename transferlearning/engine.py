@@ -40,6 +40,7 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
     torch.set_num_threads(1)
     cpu_device = torch.device("cpu")
     model.eval()
+    import pdb; pdb.set_trace()
     all_targets, all_preds, all_images = [], [], []
     logger = get_logging(training=False)
     header = 'Epoch Val: [{}]'.format(epoch)
@@ -247,3 +248,5 @@ def train(datasets, optimizer, model, device, config, writer, scheduler)\
         res = transferlearning.eval_metrics(pred, gt, config.loss_types)
         transferlearning.print_evaluation(res)
         logging.log_accuracies(writer, res, epoch)
+        if config.pickle:
+            transferlearning.save(epoch, model, optimizer)

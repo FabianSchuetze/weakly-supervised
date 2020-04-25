@@ -38,7 +38,7 @@ def get_dbs(config):
         db = PascalVOCDB(config.root_folder, config.year,
                          transforms=transform(True), train=True)
         db_test = PascalVOCDB(config.root_folder, config.year,
-                              transforms=transform(False), train=True)
+                              transforms=transform(False), train=False)
     return [db, db_test]
 
 

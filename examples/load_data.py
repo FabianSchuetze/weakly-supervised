@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # dataset = VaihingenDataBase('data/vaihingen', train=True,
                                 # transforms=get_transform(training=True))
     dataset = PascalVOCDB('data/VOC2007', '2007', train=True,
-            transforms=get_transform(training=False))
+            transforms=get_transform(training=True))
     # dataset = PennFudanDataset('data/PennFudanPed',
                                 # get_transform(training=False))
     # dataset = CocoDB('data/coco', 'train2014', get_transform(training=False))

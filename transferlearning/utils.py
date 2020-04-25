@@ -2,12 +2,11 @@ from collections import defaultdict, deque
 import datetime
 import pickle
 import time
-
+import errno
+import os
 import torch
 import torch.distributed as dist
 
-import errno
-import os
 
 
 class SmoothedValue(object):
@@ -335,3 +334,15 @@ def init_distributed_mode(args):
         rank=args.rank)
     torch.distributed.barrier()
     setup_for_distributed(args.rank == 0)
+
+def save(epoch: int, model, optimizer, config):
+    """
+    Pickles the models to hdd
+    """
+    now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+    out_dir = config.output_dir
+    save_name = os.path.join(out_dir, 'epoch_{}_{}.pth'.format(epoch, now))
+    save_dict = {'epoch': epoch, 'model': model.state_dict(),
+                 'optimizer': optimizer.state_dict()}
+    torch.save(save_dict, save_name)
+    print("Saved the model to hdd")

@@ -2,6 +2,7 @@
 r"""
 Main file used to initialize and train a model.
 """
+import os
 import argparse
 import datetime
 import easydict
@@ -57,6 +58,8 @@ if __name__ == "__main__":
     DBS = get_dbs(CONFIG)
     print_config(CONFIG)
     DATASETS = train_test(DBS, CONFIG)
+    if not os.path.exists(CONFIG.output_dir):
+        os.makedirs(CONFIG.output_dir)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,
@@ -79,3 +82,4 @@ if __name__ == "__main__":
     print_evaluation(res)
     logging.log_accuracies(WRITER, res, CONFIG.max_epochs + 1)
     WRITER.close()
+    transferlearning.save(CONFIG.max_epochs + 1, MODEL, OPT, CONFIG)

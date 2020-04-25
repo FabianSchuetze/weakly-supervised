@@ -23,4 +23,4 @@ __C.max_epochs = 10
 
 __C.val_iters = 50
 
-__C.train_test_split = 0.9
+__C.train_test_split = 0.05

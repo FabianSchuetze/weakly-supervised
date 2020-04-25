@@ -82,12 +82,12 @@ class Processing(nn.Module):
         max_size = float(torch.max(im_shape))
         if self.training:
             size = float(self.torch_choice(self.min_size))
-            scale_factor = size / min_size
+            # scale_factor = size / min_size
         else:
-            scale_factor = 1
+            # scale_factor = 1
             # FIXME assume for now that testing uses the largest scale
-            # size = float(self.min_size[-1])
-        # scale_factor = size / min_size
+            size = float(self.min_size[-1])
+        scale_factor = size / min_size
         if max_size * scale_factor > self.max_size:
             scale_factor = self.max_size / max_size
         image = torch.nn.functional.interpolate(

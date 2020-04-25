@@ -333,63 +333,63 @@ def heatmaps_to_keypoints(maps, rois):
     return xy_preds.permute(0, 2, 1), end_scores
 
 
-def keypointrcnn_loss(
-        keypoint_logits,
-        proposals,
-        gt_keypoints,
-        keypoint_matched_idxs):
-    # type: (Tensor, List[Tensor], List[Tensor], List[Tensor])
-    N, K, H, W = keypoint_logits.shape
-    assert H == W
-    discretization_size = H
-    heatmaps = []
-    valid = []
-    for proposals_per_image, gt_kp_in_image, midx in zip(
-            proposals, gt_keypoints, keypoint_matched_idxs):
-        kp = gt_kp_in_image[midx]
-        heatmaps_per_image, valid_per_image = keypoints_to_heatmap(
-            kp, proposals_per_image, discretization_size
-        )
-        heatmaps.append(heatmaps_per_image.view(-1))
-        valid.append(valid_per_image.view(-1))
+# def keypointrcnn_loss(
+        # keypoint_logits,
+        # proposals,
+        # gt_keypoints,
+        # keypoint_matched_idxs):
+    # # type: (Tensor, List[Tensor], List[Tensor], List[Tensor])
+    # N, K, H, W = keypoint_logits.shape
+    # assert H == W
+    # discretization_size = H
+    # heatmaps = []
+    # valid = []
+    # for proposals_per_image, gt_kp_in_image, midx in zip(
+            # proposals, gt_keypoints, keypoint_matched_idxs):
+        # kp = gt_kp_in_image[midx]
+        # heatmaps_per_image, valid_per_image = keypoints_to_heatmap(
+            # kp, proposals_per_image, discretization_size
+        # )
+        # heatmaps.append(heatmaps_per_image.view(-1))
+        # valid.append(valid_per_image.view(-1))
 
-    keypoint_targets = torch.cat(heatmaps, dim=0)
-    valid = torch.cat(valid, dim=0).to(dtype=torch.uint8)
-    valid = torch.nonzero(valid).squeeze(1)
+    # keypoint_targets = torch.cat(heatmaps, dim=0)
+    # valid = torch.cat(valid, dim=0).to(dtype=torch.uint8)
+    # valid = torch.nonzero(valid).squeeze(1)
 
-    # torch.mean (in binary_cross_entropy_with_logits) does'nt
-    # accept empty tensors, so handle it sepaartely
-    if keypoint_targets.numel() == 0 or len(valid) == 0:
-        return keypoint_logits.sum() * 0
+    # # torch.mean (in binary_cross_entropy_with_logits) does'nt
+    # # accept empty tensors, so handle it sepaartely
+    # if keypoint_targets.numel() == 0 or len(valid) == 0:
+        # return keypoint_logits.sum() * 0
 
-    keypoint_logits = keypoint_logits.view(N * K, H * W)
+    # keypoint_logits = keypoint_logits.view(N * K, H * W)
 
-    keypoint_loss = F.cross_entropy(
-        keypoint_logits[valid],
-        keypoint_targets[valid])
-    return keypoint_loss
+    # keypoint_loss = F.cross_entropy(
+        # keypoint_logits[valid],
+        # keypoint_targets[valid])
+    # return keypoint_loss
 
 
-def keypointrcnn_inference(x, boxes):
-    # type: (Tensor, List[Tensor])
-    kp_probs = []
-    kp_scores = []
+# def keypointrcnn_inference(x, boxes):
+    # # type: (Tensor, List[Tensor])
+    # kp_probs = []
+    # kp_scores = []
 
-    boxes_per_image = [box.size(0) for box in boxes]
+    # boxes_per_image = [box.size(0) for box in boxes]
 
-    if len(boxes_per_image) == 1:
-        # TODO : remove when dynamic split supported in ONNX
-        kp_prob, scores = heatmaps_to_keypoints(x, boxes[0])
-        return [kp_prob], [scores]
+    # if len(boxes_per_image) == 1:
+        # # TODO : remove when dynamic split supported in ONNX
+        # kp_prob, scores = heatmaps_to_keypoints(x, boxes[0])
+        # return [kp_prob], [scores]
 
-    x2 = x.split(boxes_per_image, dim=0)
+    # x2 = x.split(boxes_per_image, dim=0)
 
-    for xx, bb in zip(x2, boxes):
-        kp_prob, scores = heatmaps_to_keypoints(xx, bb)
-        kp_probs.append(kp_prob)
-        kp_scores.append(scores)
+    # for xx, bb in zip(x2, boxes):
+        # kp_prob, scores = heatmaps_to_keypoints(xx, bb)
+        # kp_probs.append(kp_prob)
+        # kp_scores.append(scores)
 
-    return kp_probs, kp_scores
+    # return kp_probs, kp_scores
 
 
 def _onnx_expand_boxes(boxes, scale):
@@ -784,6 +784,7 @@ class RoIHeads(torch.nn.Module):
             labels = labels.reshape(-1)
 
             # remove low scoring boxes
+            import pdb; pdb.set_trace()
             inds = torch.nonzero(scores > self.score_thresh).squeeze(1)
             boxes, scores, labels = boxes[inds], scores[inds], labels[inds]
 

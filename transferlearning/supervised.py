@@ -155,6 +155,7 @@ class Supervised(torch.nn.Module):
                 targets: Optional[List[Dict]] = [None]):
         """The forward propagation"""
         orig_sizes = [(i.shape[1], i.shape[2]) for i in images]
+        # import pdb; pdb.set_trace()
         # import pdb;pdb.set_trace()
         # if self.training:
             # self._backbone.train()

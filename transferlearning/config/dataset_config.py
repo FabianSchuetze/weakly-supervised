@@ -16,6 +16,7 @@ __C.PennFudanDataset.min_size = 600
 __C.PennFudanDataset.max_size = 1200
 __C.PennFudanDataset.batch_size = 1
 __C.PennFudanDataset.loss_types = ['box', 'segm']
+__C.PennFudanDataset.output_dir = 'outputs/pennfudan'
 
 __C.Vaihingen = EasyDict()
 
@@ -28,6 +29,8 @@ __C.Vaihingen.batch_size = 2
 __C.Vaihingen.loss_types = ['box', 'segm']
 __C.Vaihingen.root_folder = 'data/vaihingen'
 __C.Vaihingen.transfer_split = 0.5
+__C.Vaihingen.output_dir = 'outputs/vaihingen'
+__C.Vaihingen.learning_rate = 0.005
 
 
 __C.Coco = EasyDict()
@@ -39,6 +42,7 @@ __C.Coco.min_size = 800
 __C.Coco.max_size = 1333
 __C.Coco.batch_size = 1
 __C.Coco.loss_types = ['box', 'segm']
+__C.Coco.output_dir = 'outputs/coco'
 
 
 __C.Pascal = EasyDict()
@@ -55,3 +59,4 @@ __C.Pascal.root_folder = 'data/VOC2007'
 __C.Pascal.year = '2007'
 __C.Pascal.scales = [600]
 __C.Pascal.learning_rate = 0.001
+__C.Pascal.output_dir = 'outputs/pascal'
