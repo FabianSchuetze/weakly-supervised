@@ -27,6 +27,8 @@ __C.Vaihingen.max_size = 200
 __C.Vaihingen.batch_size = 2
 __C.Vaihingen.loss_types = ['box', 'segm']
 __C.Vaihingen.root_folder = 'data/vaihingen'
+__C.Vaihingen.transfer_split = 0.5
+
 
 __C.Coco = EasyDict()
 

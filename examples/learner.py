@@ -2,36 +2,18 @@
 r"""
 Main file used to initialize and train a model.
 """
-# from typing import Tuple
 import argparse
-import torch
-import torch.optim as optim
 import datetime
 import easydict
+import torch
+import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-from transferlearning.data import VaihingenDataBase, PennFudanDataset, CocoDB,\
-        train_test, PascalVOCDB
-from transferlearning import Supervised, Processing
-from transferlearning import print_evaluation, eval_metrics
+from transferlearning.data import get_dbs, train_test
+from transferlearning import Supervised, Processing, print_evaluation, \
+        eval_metrics, logging
 from transferlearning.config import conf
-from transferlearning import logging
 import transferlearning
 
-# import resource
-# rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-# resource.setrlimit(resource.RLIMIT_NOFILE, (3096, rlimit[1]))
-
-
-
-def transform(training: bool):
-    """
-    Transforms raw data for train and test. Passed to the Database clases
-    """
-    transforms = []
-    transforms.append(transferlearning.ToTensor()) # convert PIL image to tensor
-    if training:
-        transforms.append(transferlearning.RandomHorizontalFlip(0.5))
-    return transferlearning.Compose(transforms)
 
 def parse_args():
     """
@@ -64,27 +46,6 @@ def print_config(conf_dict: easydict) ->None:
           'data-preprocessing paras')
 
 
-def get_db(config):
-    """
-    Returns the correct databases for training
-    """
-    if config.dataset == 'Vaihingen':
-        db = VaihingenDataBase(config.root_folder, transform(True))
-        db_box = VaihingenDataBase(config.root_folder, transform(True))
-        db_test = VaihingenDataBase(config.root_folder, transform(False))
-    elif config.dataset == 'Pascal':
-        # Pascal only has boxes, so copy the database
-        db = PascalVOCDB(config.root_folder, config.year,
-                         transforms=transform(True))
-        db_box = PascalVOCDB(config.root_folder, config.year,
-                             transforms=transform(True))
-        db_test = PascalVOCDB(config.root_folder, config.year,
-                              transforms=transform(False))
-    else:
-        print("Implement properly")
-    return db, db_box, db_test
-
-
 if __name__ == "__main__":
     CLARGS = parse_args()
     CONFIG = conf(CLARGS.dataset, CLARGS)
@@ -93,9 +54,9 @@ if __name__ == "__main__":
         DEVICE = torch.device('cuda')
     if CONFIG.only_boxes:
         CONFIG.weakly_supervised = False
-    DBS = get_db(CONFIG)
+    DBS = get_dbs(CONFIG)
     print_config(CONFIG)
-    DATASETS = train_test(DBS, [500, 20, 500], CONFIG)
+    DATASETS = train_test(DBS, CONFIG)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,

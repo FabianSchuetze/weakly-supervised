@@ -12,9 +12,11 @@ from transferlearning.transforms import Compose
 class PascalVOCDB:
     """The Pascal VOC DB"""
 
-    def __init__(self, root: str, year: str, image_set: str = 'trainval',
+    def __init__(self, root: str, year: str, train: bool,
+                 image_set: str = 'trainval',
                  transforms: Optional[Compose] = None):
         self._orig_pascal = VOCDetection(root, year, image_set)
+        self._train = train
         self._transforms = transforms
         self._class_to_ind = self._class_conversion()
 
@@ -95,6 +97,8 @@ class PascalVOCDB:
         if self._inadmissible_example(labels):
             return self.__getitem__(np.random.randint(0, self.__len__()))
         img_info = [img.height, img.width]
+        # if self._train:
+            # shuffle(boxes, labels, areas)
         target = self._to_dict(boxes, labels, areas, img_info)
         if self._transforms is not None:
             img, target = self._transforms(img, target)

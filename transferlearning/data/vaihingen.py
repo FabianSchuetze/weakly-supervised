@@ -30,9 +30,11 @@ class VaihingenDataBase:
         Transformation operating on troch.tensors
     """
 
-    def __init__(self, path: str, transforms: Optional[Compose] = None):
+    def __init__(self, path: str, train: bool,
+                 transforms: Optional[Compose] = None):
         # import pdb; pdb.set_trace()
         self._path = path
+        self._train = train
         self._cache_path = os.path.join(self._path, 'cache')
         self._index = self._generate_indices()
         self._transforms = transforms

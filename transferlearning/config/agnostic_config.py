@@ -22,3 +22,5 @@ __C.num_workers = 8
 __C.max_epochs = 10
 
 __C.val_iters = 50
+
+__C.train_test_split = 0.9

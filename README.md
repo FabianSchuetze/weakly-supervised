@@ -58,6 +58,8 @@ slows down some GPUs)
 -  [ ] Comapre the result with a Deeplab implementation
 -  [ ] Unit tests (so far I only check if the module can be loaded)
 -  [ ] Complete Pascal VOC Integration. Train to compare Faster RCNN results.
+-  [ ] Add a directory to save the models
+
 
 
 

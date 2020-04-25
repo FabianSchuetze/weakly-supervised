@@ -2,11 +2,10 @@ r"""
 Some utils used in the data loading functions
 """
 from typing import List, Dict
-import torch
-from torch.utils.data import DataLoader, Subset
-import easydict
-import numpy as np
 import os
+import torch
+from torch.utils.data import DataLoader
+import numpy as np
 
 
 def to_dict(masks: List, bboxes: List, labels: List, img_info: List,
@@ -66,60 +65,42 @@ def sample_stats(dataset, n_samples, fun='mean'):
     return means
 
 
-def collate_fn(batch):
-    return tuple(zip(*batch))
-
-
-def train_test(databases: List,
-               splits: List[int], config: easydict) -> List[DataLoader]:
-    """Returns the train and test set
-
-    Parameters
-    ----------
-    database: transferlearning.data
-        Class used to load train and test examples
-
-    path: str
-        Path to loocate the raw files on the hdd
-
-    Returns
-    -------
-    Tuple[DataLoader, DataLoader]:
-        Train and Val Databases
+def _split(a: List, n: int):
     """
-    # import pdb; pdb.set_trace()
-    assert len(databases) == len(splits), "Requires the same length"
-    indices = torch.randperm(len(databases[0])).tolist()
-    thresh = np.cumsum([0, *splits])
-    assert thresh[-1] <= len(databases[0]), "to many examples selected"
-    datasets = []
-    for  db, lower, upper in zip(databases, thresh[:-1], thresh[1:]):
-        subset = Subset(db, indices[lower:upper])
-        shuffle = upper < thresh[-1]
-        num_workers = config.num_workers if upper < thresh[-1] else 0
-        datasets.append(DataLoader(subset, batch_size=config.batch_size,
-                                   shuffle=shuffle,
-                                   num_workers=num_workers,
-                                   collate_fn=collate_fn))
-    return datasets
-
-
-def split(a, n):
+    Splitting the list a into n equally sizes (if possible) sublists. Returns
+    a generator. Credit to: stackoverflow.com/questions/312443
+    """
     k, m = divmod(len(a), n)
     return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
 
 
 def split_work(to_split: List, n_workers: int) -> List[List]:
-    splits = split(to_split, n_workers)
+    """
+    Interacts with the split function and returns a list
+    """
+    splits = _split(to_split, n_workers)
     return [i for i in splits]
 
 
-def find_missing_files(search_dir, required_files) -> List[int]:
+def find_missing_files(search_dir: str, required_indices: List[int]) -> List[int]:
     """
-    Fins the existing files and returns the elements that need to be
-    cached
+    Searches the search_dir for a filename pattern and returns all indices
+    which are not in search_dir but in required_indices
+
+    Parameters
+    ----------
+    search_dir: str
+        The directory to search through
+
+    required_indices: List[int]
+        Within search dir, every file should be pickle according to its dbs
+        indices. The file contains these indices
+
+    Returns
+    ------
+    List[int]
+        The indices which are not on the hdd
     """
-    # possible = [i for i in range(0, len(self._index))]
     existing = []
     for file in os.listdir(search_dir):
         if os.path.isfile(os.path.join(search_dir, file)):
@@ -128,5 +109,5 @@ def find_missing_files(search_dir, required_files) -> List[int]:
                 existing.append(int(file))
             except ValueError:
                 continue
-    remaining = [i for i in required_files if i not in existing]
+    remaining = [i for i in required_indices if i not in existing]
     return remaining
