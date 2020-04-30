@@ -37,17 +37,17 @@ class Processing(nn.Module):
     def forward(self, images, targets=None):
         # # type: (List[Tensor], Optional[List[Dict[str, Tensor]]])
         images = [img for img in images]
-        # import pdb
-        # pdb.set_trace()
+        # if targets:
+            # assert len(images) == len(targets), 'images and targets diff len'
         for idx, img in enumerate(images):
-            target_index = targets[0] if targets is not None else None
+            target = targets[idx] if targets[0] is not None else None
             img = self.normalize(img)
-            img, target_index = self.resize(img, target_index)
+            img, target = self.resize(img, target)
             images[idx] = img
-            if targets is not None and target_index is not None:
-                if 'masks' in target_index.keys():
-                    assert img.shape[-2:] == target_index['masks'].shape[-2:]
-                targets[idx] = target_index
+            if targets is not None and target is not None:
+                if 'masks' in target.keys():
+                    assert img.shape[-2:] == target['masks'].shape[-2:]
+                targets[idx] = target
         image_sizes = [img.shape[-2:] for img in images]
         images = self.batch_images(images)
         # image_sizes_list = torch.jit.annotate(List[Tuple[int, int]], [])

@@ -48,8 +48,8 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
     if not n_iter:
         n_iter = len(data)
     for images, targets in logger.log_every(data, print_freq, header):
-        all_images.append(images[0])
-        all_targets.append(targets[0])
+        all_images.extend(images)
+        all_targets.extend(targets)
         images = list(i.to(device) for i in images)
         torch.cuda.synchronize()
         model_time = time.time()
@@ -57,7 +57,7 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
         model_time = time.time() - model_time
         outputs = [{k: v.to(cpu_device) for k, v in t.items()}
                    for t in outputs]
-        all_preds.append(outputs[0])
+        all_preds.extend(outputs)
         logger.update(model_time=model_time)
         if iters > n_iter:
             break
@@ -175,6 +175,7 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
     writer_iter: Optional[int]
         Species the gradient steps (location) for the writer
     """
+    # import pdb; pdb.set_trace()
     data = datasets[0]
     model.train()
     model.to(device)
@@ -243,10 +244,11 @@ def train(datasets, optimizer, model, device, config, writer, scheduler)\
         writer_iter = _train(datasets, optimizer, model, device, epoch,
                              config.display_iter, writer, writer_iter)
         scheduler.step()
-        pred, gt, _ = evaluate(model, datasets[-1], device, epoch,
-                               config.display_iter, config.val_iters)
-        res = transferlearning.eval_metrics(pred, gt, config.loss_types)
+        # import pdb; pdb.set_trace()
+        pred, gts, _ = evaluate(model, datasets[-1], device, epoch,
+                                config.display_iter, config.val_iters)
+        res = transferlearning.eval_metrics(pred, gts, config.loss_types)
         transferlearning.print_evaluation(res)
         logging.log_accuracies(writer, res, epoch)
         if config.pickle:
-            transferlearning.save(epoch, model, optimizer)
+            transferlearning.save(epoch, model, optimizer, config)

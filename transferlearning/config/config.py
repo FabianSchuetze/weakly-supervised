@@ -1,6 +1,6 @@
 r"""Class that integrates both dataset specific and agnostic configuration"""
 
-from .dataset_config import conf as dataset_conf
+# from .dataset_config import conf as dataset_conf
 from .agnostic_config import conf as agnostic_conf
 
 
@@ -9,9 +9,9 @@ def conf(dataset_name: str, command_ling_args=None):
     """Returns the configuration file"""
     config = agnostic_conf
     try:
-        dataset = dataset_conf[dataset_name]
+        dataset = agnostic_conf[dataset_name]
     except KeyError:
-        keys = dataset_conf.keys()
+        keys = agnostic_conf.keys()
         message = "The available keys are: %s, please define the dataset in"\
                 " transferlearning.config.dataset_conf" %(keys)
         raise KeyError(message)

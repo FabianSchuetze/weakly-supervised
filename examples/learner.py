@@ -53,7 +53,7 @@ if __name__ == "__main__":
     DEVICE = torch.device('cpu')
     if torch.cuda.is_available():
         DEVICE = torch.device('cuda')
-    if CONFIG.only_boxes:
+    if CLARGS.only_boxes:
         CONFIG.weakly_supervised = False
     DBS = get_dbs(CONFIG)
     print_config(CONFIG)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
                             CONFIG.std)
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,
                        weakly_supervised=CONFIG.weakly_supervised,
-                       only_boxes=CONFIG.only_boxes)
+                       only_boxes=CLARGS.only_boxes)
     MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = optim.SGD(PARAMS, lr=CONFIG.learning_rate, momentum=CONFIG.momentum,
@@ -73,7 +73,7 @@ if __name__ == "__main__":
                                           step_size=CONFIG.decay_step_size,
                                           gamma=CONFIG.gamma)
     WRITER = SummaryWriter()
-    logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CONFIG.dataset)
+    logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CLARGS.dataset)
     transferlearning.train(DATASETS, OPT, MODEL, DEVICE, CONFIG, WRITER, SCHEDULER)
     pred, gt, _ = transferlearning.evaluate(MODEL, DATASETS[-1], DEVICE,
                                             CONFIG.max_epochs + 1,
