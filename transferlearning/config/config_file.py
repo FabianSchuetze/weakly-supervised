@@ -23,7 +23,7 @@ __C.max_epochs = 1
 
 __C.val_iters = 1
 
-__C.train_test_split = 0.98
+__C.train_test_split = 0.9
 
 __C.pickle = True
 

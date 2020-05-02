@@ -332,66 +332,6 @@ def heatmaps_to_keypoints(maps, rois):
 
     return xy_preds.permute(0, 2, 1), end_scores
 
-
-# def keypointrcnn_loss(
-        # keypoint_logits,
-        # proposals,
-        # gt_keypoints,
-        # keypoint_matched_idxs):
-    # # type: (Tensor, List[Tensor], List[Tensor], List[Tensor])
-    # N, K, H, W = keypoint_logits.shape
-    # assert H == W
-    # discretization_size = H
-    # heatmaps = []
-    # valid = []
-    # for proposals_per_image, gt_kp_in_image, midx in zip(
-            # proposals, gt_keypoints, keypoint_matched_idxs):
-        # kp = gt_kp_in_image[midx]
-        # heatmaps_per_image, valid_per_image = keypoints_to_heatmap(
-            # kp, proposals_per_image, discretization_size
-        # )
-        # heatmaps.append(heatmaps_per_image.view(-1))
-        # valid.append(valid_per_image.view(-1))
-
-    # keypoint_targets = torch.cat(heatmaps, dim=0)
-    # valid = torch.cat(valid, dim=0).to(dtype=torch.uint8)
-    # valid = torch.nonzero(valid).squeeze(1)
-
-    # # torch.mean (in binary_cross_entropy_with_logits) does'nt
-    # # accept empty tensors, so handle it sepaartely
-    # if keypoint_targets.numel() == 0 or len(valid) == 0:
-        # return keypoint_logits.sum() * 0
-
-    # keypoint_logits = keypoint_logits.view(N * K, H * W)
-
-    # keypoint_loss = F.cross_entropy(
-        # keypoint_logits[valid],
-        # keypoint_targets[valid])
-    # return keypoint_loss
-
-
-# def keypointrcnn_inference(x, boxes):
-    # # type: (Tensor, List[Tensor])
-    # kp_probs = []
-    # kp_scores = []
-
-    # boxes_per_image = [box.size(0) for box in boxes]
-
-    # if len(boxes_per_image) == 1:
-        # # TODO : remove when dynamic split supported in ONNX
-        # kp_prob, scores = heatmaps_to_keypoints(x, boxes[0])
-        # return [kp_prob], [scores]
-
-    # x2 = x.split(boxes_per_image, dim=0)
-
-    # for xx, bb in zip(x2, boxes):
-        # kp_prob, scores = heatmaps_to_keypoints(xx, bb)
-        # kp_probs.append(kp_prob)
-        # kp_scores.append(scores)
-
-    # return kp_probs, kp_scores
-
-
 def _onnx_expand_boxes(boxes, scale):
     # type: (Tensor, float)
     w_half = (boxes[:, 2] - boxes[:, 0]) * .5
@@ -785,7 +725,9 @@ class RoIHeads(torch.nn.Module):
 
             # remove low scoring boxes
             # import pdb; pdb.set_trace()
-            inds = torch.nonzero(scores > self.score_thresh).squeeze(1)
+            # import pdb; pdb.set_trace()
+            # inds = torch.nonzero(scores > self.score_thresh).squeeze(1)
+            inds = torch.nonzero(scores > 0.10).squeeze(1)
             boxes, scores, labels = boxes[inds], scores[inds], labels[inds]
 
             # remove empty boxes
@@ -908,50 +850,4 @@ class RoIHeads(torch.nn.Module):
                     r["masks"] = mask_prob
 
             losses.update(loss_mask)
-
-        # keep none checks in if conditional so torchscript will conditionally
-        # compile each branch
-        # if self.keypoint_roi_pool is not None and self.keypoint_head is not None \
-            # and self.keypoint_predictor is not None:
-            # keypoint_proposals = [p["boxes"] for p in result]
-            # if self.training:
-            # # during training, only focus on positive boxes
-            # num_images = len(proposals)
-            # keypoint_proposals = []
-            # pos_matched_idxs = []
-            # assert matched_idxs is not None
-            # for img_id in range(num_images):
-            # pos = torch.nonzero(labels[img_id] > 0).squeeze(1)
-            # keypoint_proposals.append(proposals[img_id][pos])
-            # pos_matched_idxs.append(matched_idxs[img_id][pos])
-            # else:
-            # pos_matched_idxs = None
-
-            # keypoint_features = self.keypoint_roi_pool(features, keypoint_proposals, image_shapes)
-            # keypoint_features = self.keypoint_head(keypoint_features)
-            # keypoint_logits = self.keypoint_predictor(keypoint_features)
-
-            # loss_keypoint = {}
-            # if self.training:
-            # assert targets is not None
-            # assert pos_matched_idxs is not None
-
-            # gt_keypoints = [t["keypoints"] for t in targets]
-            # rcnn_loss_keypoint = keypointrcnn_loss(
-            # keypoint_logits, keypoint_proposals,
-            # gt_keypoints, pos_matched_idxs)
-            # loss_keypoint = {
-            # "loss_keypoint": rcnn_loss_keypoint
-            # }
-            # else:
-            # assert keypoint_logits is not None
-            # assert keypoint_proposals is not None
-
-            # keypoints_probs, kp_scores = keypointrcnn_inference(keypoint_logits, keypoint_proposals)
-            # for keypoint_prob, kps, r in zip(keypoints_probs, kp_scores, result):
-            # r["keypoints"] = keypoint_prob
-            # r["keypoints_scores"] = kps
-
-            # losses.update(loss_keypoint)
-
         return result, losses

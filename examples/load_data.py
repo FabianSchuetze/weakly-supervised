@@ -20,7 +20,6 @@ def visualize_boxes(image, boxes, labels):
     """
     Plots the boxes
     """
-    import pdb; pdb.set_trace()
     fig, ax = plt.subplots()
     image = np.array(image).transpose(1, 2, 0)
     ax.imshow(image)
@@ -30,16 +29,15 @@ def visualize_boxes(image, boxes, labels):
         rect = patches.Rectangle((box[0], box[1]), width, height,
                                  linewidth=1, edgecolor='r',
                                  facecolor='none')
-        ax.annotate(label,(box[0], box[1]))
+        ax.annotate(label, (box[0], box[1]))
         ax.add_patch(rect)
-    import pdb; pdb.set_trace()
     return fig
 
 if __name__ == "__main__":
     # dataset = VaihingenDataBase('data/vaihingen', train=True,
                                 # transforms=get_transform(training=True))
     dataset = PascalVOCDB('data/VOC2007', '2007', train=True,
-            transforms=get_transform(training=False))
+                          transforms=get_transform(training=True))
     # dataset = PennFudanDataset('data/PennFudanPed',
                                 # get_transform(training=False))
     # dataset = CocoDB('data/coco', 'train2014', get_transform(training=False))

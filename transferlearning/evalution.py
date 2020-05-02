@@ -3,15 +3,11 @@ The evaluation functions by inheriting from chainer cv
 """
 from typing import List, Dict
 from chainercv.evaluations import eval_detection_coco, \
-    eval_instance_segmentation_coco, eval_detection_voc,\
-    eval_instance_segmentation_voc
-# from chainercv.visualizations import vis_bbox
+    eval_instance_segmentation_coco
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-# import matplotlib
-# matplotlib.use('GTK3Agg')
 
 
 def _convert_box(pred_box: torch.Tensor):
@@ -26,7 +22,7 @@ def _convert_mask(mask: torch.Tensor, threshold=0.5):
     return mask > threshold
 
 
-def eval_boxes(predictions: List[Dict], gts: List[Dict], competition: str) -> Dict:
+def eval_boxes(predictions: List[Dict], gts: List[Dict]) -> Dict:
     """Returns the coco evaluation metric for box detection.
 
     Parameters
@@ -44,7 +40,7 @@ def eval_boxes(predictions: List[Dict], gts: List[Dict], competition: str) -> Di
     Returns
     -------
     eval: Dict:
-        The results according to the coco metric
+        The results according to the coco metric. At IoU=0.5: VOC metric.
     """
     pred_boxes, pred_labels, pred_scores = [], [], []
     gt_boxes, gt_labels, gt_areas = [], [], []
@@ -55,16 +51,12 @@ def eval_boxes(predictions: List[Dict], gts: List[Dict], competition: str) -> Di
         gt_boxes.append(_convert_box(gt['boxes']))
         gt_labels.append(np.array(gt['labels'], dtype=np.int32))
         gt_areas.append(np.array(gt['area'], dtype=np.float32))
-    if competition == 'Pascal':
         res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
                                   gt_boxes, gt_labels, gt_areas)
-    elif competition == 'VOC':
-        res = eval_detection_voc(pred_boxes, pred_labels, pred_scores,
-                                 gt_boxes, gt_labels)
     return res
 
 
-def eval_masks(predictions: List[Dict], gts: List[Dict], competition: str) -> Dict:
+def eval_masks(predictions: List[Dict], gts: List[Dict]) -> Dict:
     """Returns the coco evaluation metric for instance segmentation.
 
     Parameters
@@ -94,19 +86,13 @@ def eval_masks(predictions: List[Dict], gts: List[Dict], competition: str) -> Di
         gt_masks.append(_convert_mask(gt['masks']))
         gt_labels.append(np.array(gt['labels'], dtype=np.int32))
         gt_area.append(np.array(gt['area'], dtype=np.float32))
-    if competition == 'Pascal':
         res = eval_instance_segmentation_coco(pred_masks, pred_labels, pred_scores,
                                               gt_masks, gt_labels, gt_area)
-    elif competition == 'VOC':
-        res = eval_instance_segmentation_voc(pred_masks, pred_labels,
-                                             pred_scores, gt_masks,
-                                             gt_labels)
     return res
 
 
 def eval_metrics(predictions: List[Dict], gts: List[Dict], metrics: List[str],
-                 competition: str = 'Pascal')\
-        -> Dict:
+                 ) -> Dict:
     """
     Returns the metrics specifies in metrics. The metrics can be 'semg' for
     instance segmentation and 'box' for bounding box evaluation
@@ -126,16 +112,16 @@ def eval_metrics(predictions: List[Dict], gts: List[Dict], metrics: List[str],
     Returns
     -------
     eval: Dict:
-        The results according to the coco metric
+        The results according to the coco metric. At IOU=0.5: VOC metrics
 
     """
     # import pdb; pdb.set_trace()
     results = {}
     if 'segm' in metrics:
-        tmp = eval_masks(predictions, gts, competition)
+        tmp = eval_masks(predictions, gts)
         results['segm'] = tmp
     if 'box' in metrics:
-        tmp = eval_boxes(predictions, gts, competition)
+        tmp = eval_boxes(predictions, gts)
         results['box'] = tmp
     return results
 
@@ -151,25 +137,33 @@ def print_evaluation(metrics) -> None:
     print("")
 
 
-# TODO: Finda good way to add label names
-def _visualize_box(images: List[torch.Tensor], boxes: List[torch.Tensor],
-                   image_ids: List[int], output_path: str,
-                   scores: List[torch.Tensor]) -> None:
+def _add_patch(rec, axis, color):
+    width, height = rec[2] - rec[0], rec[3] - rec[1]
+    patch = patches.Rectangle((rec[0], rec[1]), width, height, linewidth=1,
+                              edgecolor=color, facecolor='none')
+    axis.add_patch(patch)
+
+
+def _add_score(rec, axis, score):
+    axis.annotate(int(score*100), (rec[0], rec[1]), fontsize=12)
+
+
+# TODO: Find good way to add label names
+def _visualize_box(imgs: List[torch.Tensor], boxes: List[torch.Tensor],
+                   gt_boxes: List[torch.Tensor], ids: List[int],
+                   output_path: str, scores: List[torch.Tensor]) -> None:
     """
     Returns the list of picutres as the result
     """
-    for image, box, img_id, score in zip(images, boxes, image_ids, scores):
+    for img, box, gt_box, img_id, score in zip(imgs, boxes, gt_boxes, ids,
+                                               scores):
         fig, axis = plt.subplots()
-        image = np.array(image).transpose(1, 2, 0)
-        box = np.array(box)
-        # score = np.array(score) // Score not used at the moment
-        axis.imshow(image)
-        for rec in box:
-            width, height = rec[2] - rec[0], rec[3] - rec[1]
-            patch = patches.Rectangle((rec[0], rec[1]), width, height,
-                                      linewidth=1, edgecolor='r',
-                                      facecolor='none')
-            axis.add_patch(patch)
+        axis.imshow(np.array(img).transpose(1, 2, 0))
+        for rec, prob in zip(np.array(box), np.array(score)):
+            _add_patch(rec, axis, color='r')
+            _add_score(rec, axis, prob)
+        for rec in np.array(gt_box):
+            _add_patch(rec, axis, color='g')
         fig.savefig(output_path + '/' +  str(img_id))
 
 
@@ -197,16 +191,18 @@ def visualize_predictions(predictions: List[Dict[str, torch.Tensor]],
     samples: int
         How many sampes to take from the output
     """
-    import pdb; pdb.set_trace()
-    boxes, scores, images, image_ids = [], [], [], []
-    indices = np.random.choice(np.arange(len(gts)), samples, replace=False)
-    for idx in indices:
+    boxes, scores, images, image_ids, gt_boxes = [], [], [], [], []
+    for idx in range(samples):
         img_id = gts[idx]['image_id'].item()
         img, target = database[img_id]
+        if gts[idx]['is_flipped'].item():
+            print("Id %i is flipped" %(img_id))
+            img = img.flip(-1)
         assert img_id == target['image_id'].item(), "different images"
         boxes.append(predictions[idx]['boxes'])
+        gt_boxes.append(gts[idx]['boxes'])
         scores.append(predictions[idx]['scores'])
         images.append(img)
         image_ids.append(img_id)
-    return _visualize_box(images, boxes, image_ids, save_path,
+    return _visualize_box(images, boxes, gt_boxes, image_ids, save_path,
                           scores)

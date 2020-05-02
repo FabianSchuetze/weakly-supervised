@@ -11,10 +11,23 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from transferlearning.data import get_dbs, train_test
 from transferlearning import Supervised, Processing, print_evaluation, \
-        eval_metrics, logging
+        eval_metrics, logging, load
 from transferlearning.config import conf
 import transferlearning
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
+def _plot_boxes(img, boxes):
+    boxes = boxes.tolist()
+    fig, axis = plt.subplots()
+    axis.imshow(np.array(img).tranpose(1, 2, 0))
+    for rec in boxes:
+        width, height = rec[2] - rec[0], rec[3] - rec[1]
+        patch = patches.Rectangle((rec[0], rec[1]), width, height,
+                                  linewidth=1, edgecolor='r',
+                                  facecolor='none')
+        axis.add_patch(patch)
 
 def parse_args():
     """
@@ -23,14 +36,19 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Command Line Arguments')
     parser.add_argument('--dataset', dest='dataset', help='training dataset',
                         default='Vaihingen', type=str)
+    parser.add_argument('--load_path', dest='load_path',
+                        help='path to restore model', type=str)
     parser.add_argument('--weakly_supervised', dest='weakly_supervised',
                         action='store_true')
     parser.add_argument('--supervised', dest='weakly_supervised',
                         action='store_false')
     parser.add_argument('--only_boxes', dest='only_boxes',
                         action='store_true')
+    parser.add_argument('--restore', dest='restore',
+                        action='store_true')
     parser.set_defaults(weakly_supervised=True)
     parser.set_defaults(only_boxes=False)
+    parser.set_defaults(restore=False)
     args = parser.parse_args()
     return args
 
@@ -58,7 +76,9 @@ if __name__ == "__main__":
     DBS = get_dbs(CONFIG)
     print_config(CONFIG)
     DATASETS = train_test(DBS, CONFIG)
-    if not os.path.exists(CONFIG.output_dir):
+    if CONFIG.output_dir:
+        NOW = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+        CONFIG.output_dir = CONFIG.output_dir + '/' + NOW
         os.makedirs(CONFIG.output_dir)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
                             CONFIG.std)
@@ -72,6 +92,8 @@ if __name__ == "__main__":
     SCHEDULER = optim.lr_scheduler.StepLR(OPT,
                                           step_size=CONFIG.decay_step_size,
                                           gamma=CONFIG.gamma)
+    if CLARGS.restore:
+        load(MODEL, OPT, CLARGS.load_path)
     WRITER = SummaryWriter()
     logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CLARGS.dataset)
     transferlearning.train(DATASETS, OPT, MODEL, DEVICE, CONFIG, WRITER, SCHEDULER)
@@ -83,3 +105,4 @@ if __name__ == "__main__":
     logging.log_accuracies(WRITER, res, CONFIG.max_epochs + 1)
     WRITER.close()
     transferlearning.save(CONFIG.max_epochs + 1, MODEL, OPT, CONFIG)
+    transferlearning.visualize_predictions(pred, DBS[1], gt, CONFIG.output_dir)

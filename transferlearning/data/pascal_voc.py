@@ -9,6 +9,8 @@ from torchvision.datasets import VOCDetection
 import torch
 from transferlearning.transforms import Compose
 from .data_utils import shuffle_targets
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 class PascalVOCDB:
     """The Pascal VOC DB"""
@@ -88,6 +90,7 @@ class PascalVOCDB:
         torch_target['labels'] = torch.as_tensor(target['labels'], dtype=torch.int64)
         torch_target['area'] = torch.as_tensor(target['area'], dtype=torch.float32)
         torch_target['image_id'] = torch.tensor([idx])
+        torch_target['is_flipped'] = torch.tensor([0]) ## Not flipped by default
         return torch_target
 
     def __getitem__(self, idx):
