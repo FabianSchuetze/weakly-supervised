@@ -45,7 +45,7 @@ Finally, the last training protocol uses 1500 images for end-to-end training and
 Datasets
 --------
 The module so far has been tested with the PennFudanDataSet, the Vaihingen
-2D dataset, and Coco 2014. For a detailed description of how to integrate these datasets
+2D dataset, Pacal VOC 2007, and Coco 2014. For a detailed description of how to integrate these datasets
 into the current code, please go to the data [folder](./data/README.md).
 
 
@@ -53,12 +53,12 @@ ToDo
 ----
 
 -  [ ] Run experiments with the other datasets to compare against SOTA results.
--  [ ] Use caching in the databases to allow faster data loading (At the moment, the data serving latency -> First experiental inegration in branch cache.
+-  [x] Use caching in the databases to allow faster data loading (At the moment, the data serving latency -> First experiental inegration in branch cache.
 slows down some GPUs)
 -  [ ] Comapre the result with a Deeplab implementation
 -  [ ] Unit tests (so far I only check if the module can be loaded)
--  [ ] Complete Pascal VOC Integration. Train to compare Faster RCNN results.
--  [ ] Add a directory to save the models
+-  [x] Complete Pascal VOC Integration. Train to compare Faster RCNN results.
+-  [x] Add a directory to save the models
 
 
 
