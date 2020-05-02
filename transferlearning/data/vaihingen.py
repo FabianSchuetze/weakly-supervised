@@ -282,6 +282,7 @@ class VaihingenDataBase:
         target = shuffle_targets(target) if self._train else target
         target = to_dict(target['masks'], target['boxes'], target['labels'],
                          target['im_info'], idx, target['area'])
+        target['is_flipped'] = torch.tesor([0]) ## Not flipped by default
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target

@@ -181,10 +181,6 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
     header = 'Epoch: [{}]'.format(epoch)
     lr_scheduler = learning_rate_scheduler(optimizer, epoch, len(data))
     for images, targets in logger.log_every(data, print_freq, header):
-        ##ids = [t['image_id'].item() for t in targets]
-        ##if ids[0] == ids[1]:
-        ##    import pdb; pdb.set_trace()
-        ##print("THe ids are %s" %(ids)) 
         optimizer.zero_grad()
         images = list(i.to(device, non_blocking=True) for i in images)
         targets = [{k: v.to(device, non_blocking=True) for k, v in t.items()} for t in targets]
