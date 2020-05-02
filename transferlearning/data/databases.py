@@ -83,5 +83,6 @@ def train_test(databases: List, config: easydict) -> List[DataLoader]:
         datasets.append(DataLoader(subset, batch_size=config.batch_size,
                                    shuffle=shuffle,
                                    num_workers=num_workers,
+                                   pin_memory=True,
                                    collate_fn=collate_fn))
     return datasets

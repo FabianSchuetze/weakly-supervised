@@ -346,3 +346,10 @@ def save(epoch: int, model, optimizer, config):
                  'optimizer': optimizer.state_dict()}
     torch.save(save_dict, save_name)
     print("Saved the model to hdd")
+
+def load(model, optimizer, path):
+    """Loads the pickled model and optimizer config from path"""
+    restored = torch.load(path)
+    success_model = model.load_state_dict(restored['model'])
+    assert str(success_model) == '<All keys matched successfully>'
+    optimizer.load_state_dict(restored['optimizer'])

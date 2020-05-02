@@ -40,7 +40,6 @@ def evaluate(model: torch.nn.Module, data: DataLoader,
     torch.set_num_threads(1)
     cpu_device = torch.device("cpu")
     model.eval()
-    import pdb; pdb.set_trace()
     all_targets, all_preds, all_images = [], [], []
     logger = get_logging(training=False)
     header = 'Epoch Val: [{}]'.format(epoch)
@@ -178,7 +177,6 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
     # import pdb; pdb.set_trace()
     data = datasets[0]
     model.train()
-    model.to(device)
     logger = get_logging(training=True)
     header = 'Epoch: [{}]'.format(epoch)
     lr_scheduler = learning_rate_scheduler(optimizer, epoch, len(data))
@@ -188,8 +186,8 @@ def train_supervised(datasets: List[DataLoader], optimizer: torch.optim,
         ##    import pdb; pdb.set_trace()
         ##print("THe ids are %s" %(ids)) 
         optimizer.zero_grad()
-        images = list(i.to(device) for i in images)
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        images = list(i.to(device, non_blocking=True) for i in images)
+        targets = [{k: v.to(device, non_blocking=True) for k, v in t.items()} for t in targets]
         loss_dict = model(images, targets)
         losses = sum(loss for loss in loss_dict.values())
         if writer:
@@ -244,7 +242,6 @@ def train(datasets, optimizer, model, device, config, writer, scheduler)\
         writer_iter = _train(datasets, optimizer, model, device, epoch,
                              config.display_iter, writer, writer_iter)
         scheduler.step()
-        # import pdb; pdb.set_trace()
         pred, gts, _ = evaluate(model, datasets[-1], device, epoch,
                                 config.display_iter, config.val_iters)
         res = transferlearning.eval_metrics(pred, gts, config.loss_types)

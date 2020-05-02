@@ -19,11 +19,11 @@ __C.decay_step_size = 10
 
 __C.num_workers = 8
 
-__C.max_epochs = 10
+__C.max_epochs = 1
 
-__C.val_iters = 50
+__C.val_iters = 1
 
-__C.train_test_split = 0.9
+__C.train_test_split = 0.98
 
 __C.pickle = True
 

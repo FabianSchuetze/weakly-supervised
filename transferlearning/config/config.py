@@ -1,8 +1,5 @@
 r"""Class that integrates both dataset specific and agnostic configuration"""
-
-# from .dataset_config import conf as dataset_conf
-from .agnostic_config import conf as agnostic_conf
-
+from .config_file import conf as agnostic_conf
 
 
 def conf(dataset_name: str, command_ling_args=None):
