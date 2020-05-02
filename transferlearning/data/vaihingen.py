@@ -11,6 +11,7 @@ from scipy import ndimage
 from transferlearning.transforms import Compose
 from .data_utils import to_dict, extract_boxes, check_area, split_work,\
         find_missing_files, shuffle_targets
+import torch
 
 
 class VaihingenDataBase:
@@ -282,7 +283,7 @@ class VaihingenDataBase:
         target = shuffle_targets(target) if self._train else target
         target = to_dict(target['masks'], target['boxes'], target['labels'],
                          target['im_info'], idx, target['area'])
-        target['is_flipped'] = torch.tesor([0]) ## Not flipped by default
+        target['is_flipped'] = torch.tensor([0]) ## Not flipped by default
         if self._transforms is not None:
             img, target = self._transforms(img, target)
         return img, target
