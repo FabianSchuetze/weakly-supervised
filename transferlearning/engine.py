@@ -6,6 +6,7 @@ import math
 import time
 from typing import Dict, Optional, List
 import numpy as np
+from easydict import EasyDict
 import torch
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -227,21 +228,29 @@ def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
     return writer_iter
 
 
-def train(datasets, optimizer, model, device, config, writer, scheduler)\
-        -> None:
-    """Does XYZ"""
-    # import pdb
-    # pdb.set_trace()
+def train(datasets: List[DataLoader], optimizer: torch.optim.Optimizer, model,
+          device: torch.device, config: EasyDict, start_epoch: int,
+          writer: SummaryWriter, scheduler: torch.optim.lr_scheduler) -> int:
+    """
+    High-level function to coordinate trainng the model
+    """
+    # import pdb; pdb.set_trace()
     writer_iter = 0
     _train = train_transfer if config.weakly_supervised else train_supervised
-    for epoch in range(config.max_epochs):
+    for epoch in range(start_epoch + 1, config.max_epochs):
         writer_iter = _train(datasets, optimizer, model, device, epoch,
                              config.display_iter, writer, writer_iter)
-        scheduler.step()
         pred, gts, _ = evaluate(model, datasets[-1], device, epoch,
                                 config.display_iter, config.val_iters)
         res = transferlearning.eval_metrics(pred, gts, config.loss_types)
+        accuracy = 0
+        # import pdb; pdb.set_trace()
+        for key in res:
+            avg = res[key]['ap/iou=0.50:0.95/area=all/max_dets=100'].mean()
+            accuracy += avg
+        scheduler.step(accuracy)
         transferlearning.print_evaluation(res)
         logging.log_accuracies(writer, res, epoch)
         if config.pickle:
-            transferlearning.save(epoch, model, optimizer, config)
+            transferlearning.save(epoch, model, optimizer, scheduler, config)
+    return epoch

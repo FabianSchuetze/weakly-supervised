@@ -335,7 +335,8 @@ def init_distributed_mode(args):
     torch.distributed.barrier()
     setup_for_distributed(args.rank == 0)
 
-def save(epoch: int, model, optimizer, config):
+def save(epoch: int, model, optimizer: torch.optim.Optimizer, 
+        scheduler: torch.optim.lr_scheduler, config):
     """
     Pickles the models to hdd
     """
@@ -343,13 +344,38 @@ def save(epoch: int, model, optimizer, config):
     out_dir = config.output_dir
     save_name = os.path.join(out_dir, 'epoch_{}_{}.pth'.format(epoch, now))
     save_dict = {'epoch': epoch, 'model': model.state_dict(),
-                 'optimizer': optimizer.state_dict()}
+                 'optimizer': optimizer.state_dict(),
+                 'scheduler': scheduler.state_dict(),}
     torch.save(save_dict, save_name)
     print("Saved the model to hdd")
 
-def load(model, optimizer, path):
-    """Loads the pickled model and optimizer config from path"""
+def load(model, optimizer: torch.optim.Optimizer, 
+        scheduler: torch.optim.lr_scheduler, path: str) -> int:
+    """Loads the pickled model and optimizer config from path
+
+    Parameters
+    ----------
+    model:
+        The model to use
+    optimizer: torch.optim.Optimizer
+        The SGD optimizer
+    scheduler: torch.optim.lr_scheduler
+        The scheduler which decreases the learning rate once it reaches a 
+        plateau.
+    path: str
+        The location from where to load the files
+
+    Returns
+    -------
+    epoch: int
+        The last epoch saved in the data, used to continue training from
+        that epoch
+    """
     restored = torch.load(path)
+    # import pdb; pdb.set_trace()
     success_model = model.load_state_dict(restored['model'])
     assert str(success_model) == '<All keys matched successfully>'
     optimizer.load_state_dict(restored['optimizer'])
+    scheduler.load_state_dict(restored['scheduler'])
+    epoch = restored['epoch']
+    return epoch

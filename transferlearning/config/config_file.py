@@ -15,15 +15,16 @@ __C.display_iter = 100
 
 __C.gamma = 0.1
 
-__C.decay_step_size = 10
+__C.patience = 4
+## How many periods to wait before the learning rate is reduced
 
 __C.num_workers = 8
 
 __C.max_epochs = 30
 
-__C.val_iters = 150
+__C.val_iters = 50
 
-__C.train_test_split = 0.8
+__C.train_test_split = 0.85
 
 __C.pickle = True
 
