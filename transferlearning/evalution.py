@@ -76,7 +76,6 @@ def eval_masks(predictions: List[Dict], gts: List[Dict]) -> Dict:
     eval: Dict:
         The results according to the coco metric
     """
-    # import pdb; pdb.set_trace()
     pred_masks, pred_labels, pred_scores = [], [], []
     gt_masks, gt_labels, gt_area = [], [], []
     for prediction, gt in zip(predictions, gts):

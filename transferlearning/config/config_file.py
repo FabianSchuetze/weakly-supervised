@@ -11,7 +11,7 @@ __C.momentum = 0.9
 
 __C.weight_decay = 0.0005
 
-__C.display_iter = 100
+__C.display_iter = 20
 
 __C.gamma = 0.1
 
@@ -65,6 +65,18 @@ __C.Coco.batch_size = 1
 __C.Coco.loss_types = ['box', 'segm']
 __C.Coco.output_dir = 'outputs/coco'
 
+__C.Faces = EasyDict()
+
+__C.Faces.mean = [0.21, 0.35, 0.0]
+__C.Faces.std = [1., 1., 1.]
+__C.Faces.num_classes = 4
+__C.Faces.min_size = 256
+__C.Faces.max_size = 500
+__C.Faces.batch_size = 2
+__C.Faces.loss_types = ['box']
+__C.Faces.database_path =\
+    '/home/fabian/CrossCalibration/TCLObjectDetectionDatabase/tcl3_data.xml'
+__C.Faces.output_dir = 'outputs/faces'
 
 __C.Pascal = EasyDict()
 
