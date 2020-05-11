@@ -62,9 +62,7 @@ def print_config(conf_dict: easydict) -> None:
     for key in conf_dict:
         print(key + ': ' + str(conf_dict[key]))
     print('To change the parameters, please edit\n'
-          './transferlearing/config/agnostic_config.py for general paras\n'
-          'and ./transferlearning/config/dataset_config.py for'
-          'data-preprocessing paras')
+          './transferlearing/config/config_file.py for paras')
 
 
 if __name__ == "__main__":
@@ -79,7 +77,7 @@ if __name__ == "__main__":
     print_config(CONFIG)
     DATASETS = train_test(DBS, CONFIG)
     if CONFIG.output_dir:
-        NOW = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+        NOW = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         CONFIG.output_dir = CONFIG.output_dir + '/' + NOW
         os.makedirs(CONFIG.output_dir)
     PROCESSING = Processing(CONFIG.min_size, CONFIG.max_size, CONFIG.mean,
@@ -87,7 +85,6 @@ if __name__ == "__main__":
     MODEL = Supervised(CONFIG.num_classes, PROCESSING,
                        weakly_supervised=CONFIG.weakly_supervised,
                        only_boxes=CLARGS.only_boxes)
-    MODEL.to(DEVICE)
     PARAMS = [p for p in MODEL.parameters() if p.requires_grad]
     OPT = optim.SGD(PARAMS, lr=CONFIG.learning_rate, momentum=CONFIG.momentum,
                     weight_decay=CONFIG.weight_decay)
@@ -101,15 +98,20 @@ if __name__ == "__main__":
         EPOCH = load(MODEL, OPT, SCHEDULER, CLARGS.load_path)
     else:
         EPOCH = 0
+    MODEL._heads.score_thresh = 0.5
+    MODEL.to(DEVICE)
     WRITER = SummaryWriter()
     logging.log_architecture(WRITER, MODEL, DATASETS, OPT, CLARGS.dataset)
     EPOCH = transferlearning.train(DATASETS, OPT, MODEL, DEVICE, CONFIG, EPOCH,
                                    WRITER, SCHEDULER)
     pred, gt, _ = transferlearning.evaluate(MODEL, DATASETS[-1], DEVICE,
-                                            EPOCH + 1, CONFIG.display_iter)
+                                            EPOCH + 1, CONFIG.display_iter,
+                                            200)
     res = eval_metrics(pred, gt, CONFIG.loss_types)
     print_evaluation(res)
     logging.log_accuracies(WRITER, res, EPOCH + 1)
     WRITER.close()
-    transferlearning.save(EPOCH + 1, MODEL, OPT, SCHEDULER, CONFIG)
-    transferlearning.visualize_predictions(pred, DBS[1], gt, CONFIG.output_dir)
+    print_evaluation(res)
+    logging.log_accuracies(WRITER, res, EPOCH + 1)
+    # transferlearning.save(EPOCH + 1, MODEL, OPT, SCHEDULER, CONFIG)
+    # transferlearning.visualize_predictions(pred, DBS[1], gt, CONFIG.output_dir)

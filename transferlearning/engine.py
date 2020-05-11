@@ -228,6 +228,21 @@ def train_transfer(datasets: List[DataLoader], optimizer: torch.optim,
     return writer_iter
 
 
+def learning_rate_scheduling(validation: Dict[str, float],
+                             scheduler: torch.optim.lr_scheduler) -> None:
+    """
+    Checks the validation loss and interacts with the learing rate
+    scheduler
+    """
+    accuracy = 0
+    for key in validation:
+        avg = validation[key]['ap/iou=0.50:0.95/area=all/max_dets=100'].mean()
+        accuracy += avg
+    scheduler.step(accuracy)
+    print("Scheduler: Best metric seen so far %f, number of bad epochs %i"
+          %(scheduler.best, scheduler.num_bad_epochs))
+
+
 def train(datasets: List[DataLoader], optimizer: torch.optim.Optimizer, model,
           device: torch.device, config: EasyDict, start_epoch: int,
           writer: SummaryWriter, scheduler: torch.optim.lr_scheduler) -> int:
@@ -237,18 +252,13 @@ def train(datasets: List[DataLoader], optimizer: torch.optim.Optimizer, model,
     # import pdb; pdb.set_trace()
     writer_iter = 0
     _train = train_transfer if config.weakly_supervised else train_supervised
-    for epoch in range(start_epoch + 1, config.max_epochs):
+    for epoch in range(start_epoch, config.max_epochs):
         writer_iter = _train(datasets, optimizer, model, device, epoch,
                              config.display_iter, writer, writer_iter)
         pred, gts, _ = evaluate(model, datasets[-1], device, epoch,
                                 config.display_iter, config.val_iters)
         res = transferlearning.eval_metrics(pred, gts, config.loss_types)
-        accuracy = 0
-        # import pdb; pdb.set_trace()
-        for key in res:
-            avg = res[key]['ap/iou=0.50:0.95/area=all/max_dets=100'].mean()
-            accuracy += avg
-        scheduler.step(accuracy)
+        learning_rate_scheduling(res, scheduler)
         transferlearning.print_evaluation(res)
         logging.log_accuracies(writer, res, epoch)
         if config.pickle:
