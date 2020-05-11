@@ -3,7 +3,7 @@ Examples how to load the different databases
 """
 import numpy as np
 from transferlearning.data import VaihingenDataBase, PennFudanDataset,\
-        CocoDB, PascalVOCDB
+        CocoDB, PascalVOCDB, FacesDB
 import transferlearning
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -36,8 +36,11 @@ def visualize_boxes(image, boxes, labels):
 if __name__ == "__main__":
     # dataset = VaihingenDataBase('data/vaihingen', train=True,
                                 # transforms=get_transform(training=True))
-    dataset = PascalVOCDB('data/VOC2007', '2007', train=True,
-                          transforms=get_transform(training=True))
+    # dataset = PascalVOCDB('data/VOC2007', '2007', train=True,
+                          # transforms=get_transform(training=True))
+    path =\
+        '/home/fabian/CrossCalibration/TCLObjectDetectionDatabase/tcl3_data.xml'
+    dataset = FacesDB(path, False, transforms=get_transform(training=False))
     # dataset = PennFudanDataset('data/PennFudanPed',
                                 # get_transform(training=False))
     # dataset = CocoDB('data/coco', 'train2014', get_transform(training=False))

@@ -51,8 +51,9 @@ def eval_boxes(predictions: List[Dict], gts: List[Dict]) -> Dict:
         gt_boxes.append(_convert_box(gt['boxes']))
         gt_labels.append(np.array(gt['labels'], dtype=np.int32))
         gt_areas.append(np.array(gt['area'], dtype=np.float32))
-        res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
-                                  gt_boxes, gt_labels, gt_areas)
+    # import pdb; pdb.set_trace()
+    res = eval_detection_coco(pred_boxes, pred_labels, pred_scores,
+                              gt_boxes, gt_labels, gt_areas)
     return res
 
 
@@ -76,7 +77,6 @@ def eval_masks(predictions: List[Dict], gts: List[Dict]) -> Dict:
     eval: Dict:
         The results according to the coco metric
     """
-    # import pdb; pdb.set_trace()
     pred_masks, pred_labels, pred_scores = [], [], []
     gt_masks, gt_labels, gt_area = [], [], []
     for prediction, gt in zip(predictions, gts):
@@ -86,8 +86,8 @@ def eval_masks(predictions: List[Dict], gts: List[Dict]) -> Dict:
         gt_masks.append(_convert_mask(gt['masks']))
         gt_labels.append(np.array(gt['labels'], dtype=np.int32))
         gt_area.append(np.array(gt['area'], dtype=np.float32))
-        res = eval_instance_segmentation_coco(pred_masks, pred_labels, pred_scores,
-                                              gt_masks, gt_labels, gt_area)
+    res = eval_instance_segmentation_coco(pred_masks, pred_labels, pred_scores,
+                                          gt_masks, gt_labels, gt_area)
     return res
 
 

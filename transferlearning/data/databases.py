@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader, Subset
 import easydict
 from transferlearning.data import VaihingenDataBase, PennFudanDataset, CocoDB,\
-        PascalVOCDB
+        PascalVOCDB, FacesDB
 import transferlearning
 
 
@@ -34,11 +34,18 @@ def get_dbs(config):
                                transforms=transform(True), train=True)
         db_test = VaihingenDataBase(config.root_folder,
                                     transforms=transform(False), train=False)
-    if config.dataset == 'Pascal':
+    elif config.dataset == 'Pascal':
         db = PascalVOCDB(config.root_folder, config.year,
                          transforms=transform(True), train=True)
         db_test = PascalVOCDB(config.root_folder, config.year,
                               transforms=transform(False), train=False)
+    elif config.dataset == 'Faces':
+        db = FacesDB(config.database_path, train=True,
+                     transforms=transform(True))
+        db_test = FacesDB(config.database_path, train=True,
+                          transforms=transform(False))
+    else:
+        raise Exception("Please add the dataset")
     return [db, db_test]
 
 
