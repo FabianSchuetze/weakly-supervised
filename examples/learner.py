@@ -114,4 +114,4 @@ if __name__ == "__main__":
     print_evaluation(res)
     logging.log_accuracies(WRITER, res, EPOCH + 1)
     # transferlearning.save(EPOCH + 1, MODEL, OPT, SCHEDULER, CONFIG)
-    # transferlearning.visualize_predictions(pred, DBS[1], gt, CONFIG.output_dir)
+    transferlearning.visualize_predictions(pred, DBS[1], gt, CONFIG.output_dir)

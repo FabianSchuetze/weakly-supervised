@@ -17,8 +17,8 @@ class FacesDB:
         self._database = database
         self._images = self._load_images()
         self._train = train
-        self._conversion = {'glabella': 3, 'left_eye':1, 'right_eye':2,
-                            'nose_tip': 0}
+        self._conversion = {'glabella': 1, 'left_eye':2, 'right_eye':3,
+                            'nose_tip': 4}
         self._transforms = transforms
 
     def _load_images(self):

@@ -154,21 +154,24 @@ def _visualize_box(imgs: List[torch.Tensor], boxes: List[torch.Tensor],
     """
     Returns the list of picutres as the result
     """
+    fig, axis = plt.subplots(3, 3)
+    idx = 0
     for img, box, gt_box, img_id, score in zip(imgs, boxes, gt_boxes, ids,
                                                scores):
-        fig, axis = plt.subplots()
-        axis.imshow(np.array(img).transpose(1, 2, 0))
+        ax = axis[np.unravel_index(idx, (3,3))]
+        ax.imshow(np.array(img).transpose(1, 2, 0))
         for rec, prob in zip(np.array(box), np.array(score)):
-            _add_patch(rec, axis, color='r')
-            _add_score(rec, axis, prob)
+            _add_patch(rec, ax, color='r')
+            _add_score(rec, ax, prob)
         for rec in np.array(gt_box):
-            _add_patch(rec, axis, color='g')
+            _add_patch(rec, ax, color='g')
+        idx += 1
         fig.savefig(output_path + '/' +  str(img_id))
 
 
 def visualize_predictions(predictions: List[Dict[str, torch.Tensor]],
                           database, gts: List[Dict[str, torch.Tensor]],
-                          save_path: str, samples: int = 10) -> None:
+                          save_path: str) -> None:
     """
     Saves bounding box plots for `samples` images in `predictions` and saves it
     to harddisk at `config.output_dir`.
@@ -187,11 +190,11 @@ def visualize_predictions(predictions: List[Dict[str, torch.Tensor]],
     save_path: str
         The location where to store the pictures
 
-    samples: int
-        How many sampes to take from the output
+    # samples: int
+        # How many sampes to take from the output
     """
     boxes, scores, images, image_ids, gt_boxes = [], [], [], [], []
-    for idx in range(samples):
+    for idx in range(9):
         img_id = gts[idx]['image_id'].item()
         img, target = database[img_id]
         if gts[idx]['is_flipped'].item():

@@ -20,7 +20,7 @@ __C.patience = 4
 
 __C.num_workers = 8
 
-__C.max_epochs = 30
+__C.max_epochs = 8
 
 __C.val_iters = 50
 
@@ -69,13 +69,13 @@ __C.Faces = EasyDict()
 
 __C.Faces.mean = [0.21, 0.35, 0.0]
 __C.Faces.std = [1., 1., 1.]
-__C.Faces.num_classes = 4
+__C.Faces.num_classes = 5
 __C.Faces.min_size = 256
 __C.Faces.max_size = 500
 __C.Faces.batch_size = 2
 __C.Faces.loss_types = ['box']
 __C.Faces.database_path =\
-    '/home/fabian/CrossCalibration/TCLObjectDetectionDatabase/tcl3_data.xml'
+    'data/TS/TCLObjectDetectionDatabase/tcl3_data.xml'
 __C.Faces.output_dir = 'outputs/faces'
 
 __C.Pascal = EasyDict()
