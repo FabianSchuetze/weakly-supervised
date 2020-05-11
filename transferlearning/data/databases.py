@@ -53,6 +53,7 @@ def generate_train_splits(config: easydict, size: int) -> List[List[int]]:
     """
     Generates train test splits
     """
+    torch.manual_seed(0)
     all_indices = torch.randperm(size).tolist()
     cutoff = int(size * config.train_test_split)
     train, test = all_indices[:cutoff], all_indices[cutoff:]
